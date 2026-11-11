@@ -1,6 +1,7 @@
 # LUJITOS — Reporte de la Fase 3
 
 Backend, Supabase, autenticación, base de datos y seguridad. Fecha: 2026-11-11.
+**Estado: terminada.** Todas las comprobaciones del brief pasaron, también en el iPhone.
 
 ## 1. Resumen técnico
 
@@ -136,7 +137,7 @@ mismas direcciones).
 | --- | --- |
 | TypeScript (`tsc --noEmit`, incluida la comparación de tipos con la base real) | 0 errores |
 | ESLint | 0 problemas |
-| Unitarias (`npm test`, 8 archivos) | **93/93** |
+| Unitarias (`npm test`, 9 archivos) | **95/95** |
 | SQL local (`npm run test:db`), con y sin permisos automáticos | **66/66** en ambos modos |
 | SQL en el proyecto real (`npm run test:db:remote`) | **66/66**, todo dentro de una transacción que se deshace |
 | Integración por la API real (`npm run test:integration`) | **21/21** |
@@ -167,10 +168,16 @@ abiertas, clave foránea simple, vista sin `security_invoker`, auditoría escrib
 valores, sin `redirectTo`, sin manejo de red y sin validar el nombre en el onboarding.
 
 **En el iPhone (Expo Go):**
-- **Comprobado:** bienvenida sin sesión, registro con correo real, enlace de confirmación,
-  onboarding, perfil creado (verificado en la base) e inicio vacío con el nombre.
-- **Falta:** inicio de sesión manual, persistencia al cerrar Expo Go, cierre de sesión y
-  recuperación de contraseña.
+- **Comprobado por el usuario y verificado en la base:**
+  - Bienvenida sin sesión, registro con correo real, enlace de confirmación, onboarding,
+    perfil creado e inicio vacío con su nombre.
+  - Cuenta creada (05:53 UTC).
+  - Movimiento creado y borrado (aparecen en la auditoría).
+  - Correo de recuperación (05:54) e inicio de sesión con la contraseña nueva (05:55).
+  - Sesión guardada y vigente al reabrir.
+  - Cierre de sesión.
+- El inicio de sesión y la recuperación no aparecen en la auditoría porque ocurrieron antes
+  de crearla (06:02 UTC).
 
 ## 8. Configuraciones pendientes
 

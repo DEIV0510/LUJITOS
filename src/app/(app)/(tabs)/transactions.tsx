@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { AmountText } from '@/components/finance/AmountText';
 import { CategoryIcon, InstitutionBadge } from '@/components/finance/Badges';
@@ -167,7 +166,8 @@ function TransactionsScreen() {
           }
         />
       ) : (
-        <Animated.View key={`${month}-${type}-${accountId}-${categoryId}`} entering={FadeIn.duration(220)} style={{ gap: spacing.xl }}>
+        // Sin fundido al cambiar de filtro: la lista cambia al instante.
+        <View style={{ gap: spacing.xl }}>
           {days.map((day) => {
             const dayTotals = totalsOf(day.data);
             return (
@@ -188,7 +188,7 @@ function TransactionsScreen() {
               </View>
             );
           })}
-        </Animated.View>
+        </View>
       )}
 
       <OptionSheet visible={sheet === 'account'} title="Filtrar por cuenta" onClose={() => setSheet(null)}>

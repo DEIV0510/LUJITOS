@@ -57,11 +57,11 @@ describe('Onboarding', () => {
   it('«Omitir» desde la bienvenida lleva directo al último paso y guarda con los valores de Colombia', async () => {
     await renderOnboarding();
     expect(screen.getByLabelText('Paso 1 de 5')).toBeTruthy();
-    fireEvent.press(screen.getByText('Omitir'));
+    await fireEvent.press(screen.getByText('Omitir'));
     expect(await screen.findByLabelText('Paso 5 de 5')).toBeTruthy();
     expect(screen.queryByText('Omitir')).toBeNull();
 
-    fireEvent.press(screen.getByText('Entrar a LUJITOS'));
+    await fireEvent.press(screen.getByText('Entrar a LUJITOS'));
     await waitFor(() => expect(mockSetProfile).toHaveBeenCalled());
     expect(mockCompleteOnboarding).toHaveBeenCalledWith('usuario-1', {
       firstName: 'David',
@@ -74,7 +74,7 @@ describe('Onboarding', () => {
 
   it('el paso del nombre no se puede omitir', async () => {
     await renderOnboarding();
-    fireEvent.press(screen.getByText('Empezar'));
+    await fireEvent.press(screen.getByText('Empezar'));
     expect(await screen.findByLabelText('Paso 2 de 5')).toBeTruthy();
     expect(screen.queryByText('Omitir')).toBeNull();
   });
@@ -82,8 +82,8 @@ describe('Onboarding', () => {
   it('si se omitió y falta el nombre, vuelve a pedirlo en vez de guardar', async () => {
     mockProfile = { id: 'usuario-1', first_name: '', last_name: '' };
     await renderOnboarding();
-    fireEvent.press(screen.getByText('Omitir'));
-    fireEvent.press(await screen.findByText('Entrar a LUJITOS'));
+    await fireEvent.press(screen.getByText('Omitir'));
+    await fireEvent.press(await screen.findByText('Entrar a LUJITOS'));
     expect(await screen.findByLabelText('Paso 2 de 5')).toBeTruthy();
     expect(mockCompleteOnboarding).not.toHaveBeenCalled();
   });

@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@/theme';
@@ -14,13 +13,16 @@ type Props = {
   children: ReactNode;
 };
 
-/** Hoja inferior para elegir una opción (cuenta, categoría, fecha, filtros). */
+/**
+ * Hoja inferior para elegir una opción (entidad, tipo, cuenta, categoría, filtros).
+ * Sin animaciones: aparece y se cierra al instante (decisión del usuario).
+ */
 export function OptionSheet({ visible, title, onClose, children }: Props) {
   const { colors, radius, spacing } = useAppTheme();
   const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.root}>
         <Pressable
           accessibilityRole="button"
@@ -29,8 +31,7 @@ export function OptionSheet({ visible, title, onClose, children }: Props) {
           style={[StyleSheet.absoluteFill, { backgroundColor: colors.overlay }]}
         />
         {visible ? (
-          <Animated.View
-            entering={SlideInDown.springify().damping(22).stiffness(220)}
+          <View
             style={[
               styles.sheet,
               {
@@ -41,9 +42,9 @@ export function OptionSheet({ visible, title, onClose, children }: Props) {
               },
             ]}
           >
-            <Animated.View entering={FadeIn.delay(80)} style={styles.handleWrap}>
+            <View style={styles.handleWrap}>
               <View style={[styles.handle, { backgroundColor: colors.borderStrong }]} />
-            </Animated.View>
+            </View>
             <AppText variant="headline" align="center" style={{ marginBottom: spacing.md }} accessibilityRole="header">
               {title}
             </AppText>
@@ -54,7 +55,7 @@ export function OptionSheet({ visible, title, onClose, children }: Props) {
             >
               {children}
             </ScrollView>
-          </Animated.View>
+          </View>
         ) : null}
       </View>
     </Modal>

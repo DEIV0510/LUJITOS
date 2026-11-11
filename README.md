@@ -3,7 +3,7 @@
 Gestor de finanzas personales para iPhone. Colombia, español, pesos colombianos (COP),
 zona horaria America/Bogota. **TU DINERO, BAJO CONTROL.**
 
-Estado: **Fase 3** — usuarios reales con Supabase (registro, inicio de sesión,
+Estado: **Fase 3 terminada** (2026-11-11) — usuarios reales con Supabase (registro, inicio de sesión,
 recuperación de contraseña, perfil, onboarding), base PostgreSQL con RLS y auditoría, y
 cuentas y movimientos guardados de verdad. La demostración sigue disponible en
 Configuración. Reporte y pendientes: [docs/FASE3.md](docs/FASE3.md).
@@ -71,7 +71,7 @@ que fijar la IP del Wi-Fi: `$env:REACT_NATIVE_PACKAGER_HOSTNAME = '<IP>'; npm.cm
 
 1. Configuración del proyecto y entorno — **hecha**
 2. Identidad visual y diseño de pantallas — **hecha**
-3. Autenticación y base de datos — **en curso**
+3. Autenticación y base de datos — **hecha**
 4. Inicio y cuentas
 5. Movimientos y cálculos financieros
 6. Presupuestos y objetivos de ahorro

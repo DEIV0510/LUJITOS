@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { haptics } from '@/lib/haptics';
 import { useAppTheme } from '@/theme';
@@ -21,7 +20,7 @@ type Props<T extends string> = {
 
 const PADDING = 3;
 
-/** Selector de opciones con indicador que se desliza. */
+/** Selector de opciones. El indicador cambia al instante, sin animación (decisión del usuario). */
 export function SegmentedControl<T extends string>({
   options,
   value,
@@ -37,13 +36,6 @@ export function SegmentedControl<T extends string>({
     0,
   );
   const segment = width > 0 ? (width - PADDING * 2) / options.length : 0;
-  const offset = useSharedValue(0);
-
-  useEffect(() => {
-    offset.set(withSpring(index * segment, { damping: 22, stiffness: 260, mass: 0.8 }));
-  }, [index, segment, offset]);
-
-  const indicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: offset.value }] }));
 
   const onLayout = (event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width);
   const track = tone === 'brand' ? colors.brandRaised : colors.surfaceMuted;
@@ -57,7 +49,7 @@ export function SegmentedControl<T extends string>({
       style={[styles.track, { backgroundColor: track, borderRadius: radius.md, borderCurve: 'continuous' }, style]}
     >
       {segment > 0 ? (
-        <Animated.View
+        <View
           style={[
             styles.indicator,
             {
@@ -67,7 +59,7 @@ export function SegmentedControl<T extends string>({
               borderCurve: 'continuous',
             },
             tone === 'surface' && scheme === 'light' ? shadows.card : null,
-            indicatorStyle,
+            { transform: [{ translateX: index * segment }] },
           ]}
         />
       ) : null}

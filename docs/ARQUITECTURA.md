@@ -267,7 +267,7 @@ Regla: instalar siempre con `npx expo install <paquete>`, que elige la versión 
 - `npx expo-doctor`: configuración y versiones.
 - `npm run bundle:ios`: compila el bundle real de iOS (Hermes) para detectar errores
   que el editor no ve.
-- `npm test`: 93 pruebas unitarias (validaciones, sesión en el llavero, flujos de auth,
+- `npm test`: 95 pruebas unitarias (validaciones, sesión en el llavero, flujos de auth,
   estados de sesión de `AuthProvider`, registro de errores, onboarding, protección de
   rutas, reglas contables). `tests/unit/navigation-router.test.tsx` abre la
   app con el router real (`expo-router/testing-library`) en cada estado de sesión y
