@@ -141,22 +141,38 @@ describe('Protección de rutas', () => {
       app: false,
       onboarding: false,
       auth: false,
+      home: '/welcome',
     });
   });
 
   it('sin sesión solo se ve el acceso', () => {
     const guards = navigationGuards({ status: 'signedOut', onboarded: true, recovery: false });
-    expect(guards).toMatchObject({ app: false, onboarding: false, auth: true });
+    expect(guards).toMatchObject({ app: false, onboarding: false, auth: true, home: '/welcome' });
   });
 
   it('con sesión nueva va al onboarding; con onboarding completo, a la app', () => {
-    expect(navigationGuards({ status: 'signedIn', onboarded: false, recovery: false })).toMatchObject({ app: false, onboarding: true, auth: false });
-    expect(navigationGuards({ status: 'signedIn', onboarded: true, recovery: false })).toMatchObject({ app: true, onboarding: false, auth: false });
+    expect(navigationGuards({ status: 'signedIn', onboarded: false, recovery: false })).toMatchObject({
+      app: false,
+      onboarding: true,
+      auth: false,
+      home: '/onboarding',
+    });
+    expect(navigationGuards({ status: 'signedIn', onboarded: true, recovery: false })).toMatchObject({
+      app: true,
+      onboarding: false,
+      auth: false,
+      home: '/',
+    });
   });
 
   it('durante la recuperación de contraseña todo lo demás queda cerrado', () => {
     for (const status of ['signedIn', 'signedOut'] as const) {
-      expect(navigationGuards({ status, onboarded: true, recovery: true })).toMatchObject({ app: false, onboarding: false, auth: false });
+      expect(navigationGuards({ status, onboarded: true, recovery: true })).toMatchObject({
+        app: false,
+        onboarding: false,
+        auth: false,
+        home: '/reset-password',
+      });
     }
   });
 

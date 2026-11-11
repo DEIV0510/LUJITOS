@@ -1,17 +1,12 @@
 import { useFonts } from 'expo-font';
-import {
-  DarkTheme,
-  DefaultTheme,
-  Stack,
-  ThemeProvider as NavigationThemeProvider,
-  type Theme,
-} from 'expo-router';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider, type Theme } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AnimatedSplash } from '@/components/brand/AnimatedSplash';
+import { AppNavigator } from '@/features/auth/AppNavigator';
 import { navigationGuards } from '@/features/auth/navigation';
 import { ProfileErrorScreen, SetupRequiredScreen } from '@/features/auth/StatusScreens';
 import { PrivacyProvider } from '@/features/privacy/PrivacyProvider';
@@ -85,21 +80,7 @@ function AppShell() {
   } else if (ready) {
     content = (
       <NavigationThemeProvider value={navigationTheme}>
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
-          <Stack.Protected guard={guards.app}>
-            <Stack.Screen name="(app)" />
-          </Stack.Protected>
-          <Stack.Protected guard={guards.onboarding}>
-            <Stack.Screen name="onboarding" options={{ animation: 'fade', gestureEnabled: false }} />
-          </Stack.Protected>
-          <Stack.Protected guard={guards.auth}>
-            <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
-          </Stack.Protected>
-          {/* Destinos de los enlaces de correo: accesibles en cualquier estado. */}
-          <Stack.Screen name="reset-password" options={{ gestureEnabled: false }} />
-          <Stack.Screen name="auth/callback" options={{ animation: 'fade' }} />
-          <Stack.Screen name="legal" options={{ presentation: 'modal' }} />
-        </Stack>
+        <AppNavigator guards={guards} background={colors.background} />
       </NavigationThemeProvider>
     );
   }

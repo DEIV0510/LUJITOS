@@ -52,6 +52,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16",
+    "@testing-library/react-native": "^14.1.0",
     "@types/react": "~19.3.0",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~58.0.4",
@@ -63,7 +64,7 @@
       "^@/(.*)$": "<rootDir>/src/$1"
     },
     "testMatch": [
-      "<rootDir>/tests/unit/**/*.test.ts"
+      "<rootDir>/tests/unit/**/*.test.ts?(x)"
     ],
     "clearMocks": true
   }

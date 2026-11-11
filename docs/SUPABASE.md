@@ -118,7 +118,7 @@ sus datos: `npm run test:users:clean`.
 
 | Comando | Qué prueba | Necesita |
 | --- | --- | --- |
-| `npm test` | 51 pruebas: validaciones, sesión en el llavero, flujos de auth, protección de rutas, reglas contables | Nada |
+| `npm test` | 75 pruebas: validaciones, sesión en el llavero, flujos de auth, navegación con el router real según la sesión, reglas contables | Nada |
 | `npm run test:db` | Migraciones + 52 comprobaciones de RLS e integridad en PostgreSQL local (PGlite) | Nada |
 | `npm run test:db:remote` | Las mismas 52 comprobaciones en tu proyecto real (todo dentro de una transacción que se deshace) | Proyecto vinculado |
 | `npm run test:integration` | Por la API real: inicio y cierre de sesión, persistencia y renovación de sesión, perfil, aislamiento entre usuarios | `.env.local` + usuarios de prueba |

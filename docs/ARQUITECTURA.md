@@ -224,6 +224,7 @@ instaló: los formularios actuales no lo necesitan.
 | zod | 4.6.7 (JS) | Sí | Instalado (Fase 3): validaciones |
 | jest-expo + jest 30 | ~58.0.14 | — | Instalado (Fase 3, desarrollo) |
 | @electric-sql/pglite | 0.5.16 | — | Instalado (Fase 3, desarrollo): pruebas SQL locales |
+| @testing-library/react-native | 14.1.0 | — | Instalado (Fase 3, desarrollo): pruebas de navegación |
 | expo-notifications | ~58.1.8 | Sí | Fase 7 |
 | @shopify/react-native-skia | 2.14.0 | Sí | Solo si los gráficos SVG se quedan cortos |
 | expo-image-picker / expo-camera | ~58.0.10 / ~58.0.14 | Sí | Fase 10 |
@@ -239,8 +240,15 @@ Regla: instalar siempre con `npx expo install <paquete>`, que elige la versión 
 - `npx expo-doctor`: configuración y versiones.
 - `npm run bundle:ios`: compila el bundle real de iOS (Hermes) para detectar errores
   que el editor no ve.
-- `npm test`: 51 pruebas unitarias (validaciones, sesión en el llavero, flujos de auth,
-  protección de rutas, reglas contables).
+- `npm test`: 75 pruebas unitarias (validaciones, sesión en el llavero, flujos de auth,
+  protección de rutas, reglas contables). `tests/unit/navigation-router.test.tsx` abre la
+  app con el router real (`expo-router/testing-library`) en cada estado de sesión y
+  dirección: así se detectó y corrigió «Unmatched Route» al abrir sin sesión.
+- Rutas protegidas: cada `Stack.Protected` lleva `redirectTo` a la pantalla del estado
+  actual (`navigationGuards().home`). Sin eso, Expo Router redirige al grupo `/(auth)`, que
+  no tiene índice, y muestra «Unmatched Route». Los grupos usan `unstable_settings.anchor`
+  (`initialRouteName` está obsoleto en Expo Router 58) y las pestañas solo muestran las
+  pantallas declaradas con `Tabs.Screen`.
 - `npm run test:db`: migraciones + 52 comprobaciones de RLS e integridad en PostgreSQL
   local (PGlite), con y sin permisos automáticos. Se verificó que detectan fallos rompiendo
   políticas a propósito.
