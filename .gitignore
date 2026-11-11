@@ -30,8 +30,13 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# env files: secretos nunca en git (solo la plantilla .env.example)
+.env
+.env.*
+!.env.example
+
+# Claude Code: preferencias locales
+.claude/settings.local.json
 
 # typescript
 *.tsbuildinfo
