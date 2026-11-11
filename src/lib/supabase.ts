@@ -11,7 +11,7 @@
  */
 import 'react-native-url-polyfill/auto';
 
-import { createClient, processLock } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { AppState, type AppStateStatus } from 'react-native';
 
 import type { Database } from '@/types/database';
@@ -35,7 +35,8 @@ export const supabase = createClient<Database>(
       persistSession: true,
       detectSessionInUrl: false,
       flowType: 'pkce',
-      lock: processLock,
+      // Sin `lock`: desde supabase-js 2.107 la renovación se coordina sola y la
+      // opción está obsoleta (avisa en consola y desaparece en v3).
     },
   },
 );
