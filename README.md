@@ -1,60 +1,63 @@
 # LUJITOS
 
 Gestor de finanzas personales para iPhone. Colombia, español, pesos colombianos (COP),
-zona horaria America/Bogota.
+zona horaria America/Bogota. **TU DINERO, BAJO CONTROL.**
 
-Estado: **Fase 1 completa** (entorno). Todavía no hay módulos financieros.
+Estado: **Fase 2 completa** (identidad visual y todas las pantallas con navegación).
+Los datos son **de demostración**: nada se guarda todavía (eso llega en la Fase 3).
 
 ## Requisitos
 
 - Node.js 20 o superior (probado con 24.16.0) y npm.
 - iPhone con **Expo Go** actualizado desde App Store (debe abrir proyectos SDK 58).
-- PC e iPhone en la misma red Wi-Fi.
+- Cuenta Expo con sesión iniciada en el PC (`npx expo login`) y en Expo Go, para el túnel.
 
 ## Comandos
 
 | Comando | Qué hace |
 | --- | --- |
 | `npm install` | Instala dependencias (la primera vez). |
-| `npm start` | Abre el servidor de desarrollo y muestra el código QR. |
-| `npm run start:clear` | Igual, borrando la caché de Metro. |
-| `npm run start:tunnel` | Para redes donde el iPhone no ve al PC. |
+| `npm run start:tunnel` | **Forma habitual**: túnel de Expo, funciona en cualquier red. |
+| `npm start` | Red local (PC e iPhone en la misma Wi-Fi). |
+| `npm run start:clear` | Red local borrando la caché de Metro. |
 | `npm run check` | TypeScript + ESLint. |
 | `npm run bundle:ios` | Compila el bundle de iOS para comprobar que no hay errores. |
 | `npx expo-doctor` | Revisa configuración y versiones. |
 
 Para añadir librerías: `npx expo install <paquete>` (nunca `npm install <paquete>`).
+En PowerShell, si `npm` da error de scripts deshabilitados, usar `npm.cmd`.
 
 ## Abrir en el iPhone
 
-1. En VS Code: **Terminal → Nueva terminal**, y ejecutar `npm start`.
-2. Si Windows pregunta por el Firewall para **Node.js**, marcar **Redes privadas** y
-   pulsar **Permitir acceso**.
-3. En el iPhone, abrir la app **Cámara** y apuntar al código QR de la terminal.
-   Tocar el aviso **Abrir en Expo Go**.
-4. Debe aparecer la pantalla «LUJITOS ya abre en tu iPhone» con el diagnóstico.
+1. En la terminal de VS Code, dentro de la carpeta del proyecto: `npm.cmd run start:tunnel`.
+2. En el iPhone, abrir **Expo Go** con la misma cuenta Expo del PC.
+3. Tocar LUJITOS en **Development servers**, o escanear el QR con la **Cámara**.
+4. Al terminar, **Ctrl+C** en la terminal cierra el túnel.
 
-Si no conecta:
+Si el inicio de sesión en la terminal falla al abrir el navegador (fallo de la CLI en
+Windows): `$env:BROWSER = 'none'; npx.cmd expo login` y abrir a mano el enlace que imprime.
 
-- Revisar que la red Wi-Fi del PC esté como **Privada** (Configuración de Windows →
-  Red e Internet → Wi-Fi → la red → Tipo de perfil de red → Privada).
-- O usar `npm run start:tunnel` (túnel de Expo). Funciona en cualquier red, incluso con
-  datos móviles. Exige la **misma cuenta Expo** en el PC (`npx expo login`) y en Expo Go.
-  Si en Windows el inicio de sesión falla al abrir el navegador:
-  `$env:BROWSER = 'none'; npx.cmd expo login` y abrir a mano el enlace que imprime.
-  Cerrar el túnel con Ctrl+C al terminar.
-- Si el PC tiene Radmin VPN u otra VPN, Expo puede poner en el QR la IP equivocada. En
-  PowerShell: `$env:REACT_NATIVE_PACKAGER_HOSTNAME = '<IP del Wi-Fi>'; npm.cmd start`.
+Red local en vez de túnel: el PC cambia entre redes Wi-Fi y tiene Radmin VPN, así que hay
+que fijar la IP del Wi-Fi: `$env:REACT_NATIVE_PACKAGER_HOSTNAME = '<IP>'; npm.cmd start`.
+
+## Pantallas (Fase 2)
+
+- **Pestañas:** Inicio · Cuentas · Movimientos · Estadísticas · Asesor IA.
+- **Registro rápido** (botón «+»): ingreso, gasto o transferencia.
+- **Detalle:** cuenta, movimiento, nueva cuenta.
+- **Módulos** (desde el perfil): presupuestos, metas de ahorro, deudas, tarjetas de
+  crédito, calendario financiero, pagos recurrentes, notificaciones y configuración.
 
 ## Documentación
 
 - [Arquitectura y decisiones técnicas](docs/ARQUITECTURA.md)
+- [Sistema de diseño e identidad](docs/DISENO.md)
 - [Instrucciones para agentes de código](AGENTS.md)
 
 ## Fases
 
 1. Configuración del proyecto y entorno — **hecha**
-2. Identidad visual y diseño de pantallas
+2. Identidad visual y diseño de pantallas — **hecha**
 3. Autenticación y base de datos
 4. Inicio y cuentas
 5. Movimientos y cálculos financieros
