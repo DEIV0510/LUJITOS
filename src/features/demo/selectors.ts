@@ -23,8 +23,10 @@ import type {
   Institution,
   SavingsGoal,
   Transaction,
-  TransactionType,
+  StoredTransactionType,
 } from '@/types/finance';
+
+import { groupByDay, signedAmountFor, totalsOf } from '@/features/data/summaries';
 
 import {
   DEMO_ACCOUNTS,
@@ -125,7 +127,7 @@ export function getRecentTransactions(limit: number): Transaction[] {
 
 export type TransactionFilter = {
   month?: string;
-  type?: TransactionType | 'all';
+  type?: StoredTransactionType | 'all';
   accountId?: string | null;
   categoryId?: string | null;
 };
@@ -150,33 +152,11 @@ export function getTransactionsForAccount(accountId: string): Transaction[] {
   return filterTransactions({ accountId });
 }
 
-export function groupByDay(transactions: Transaction[]): { date: ISODate; data: Transaction[] }[] {
-  const groups = new Map<ISODate, Transaction[]>();
-  for (const transaction of transactions) {
-    const list = groups.get(transaction.date) ?? [];
-    list.push(transaction);
-    groups.set(transaction.date, list);
-  }
-  return [...groups.entries()].map(([date, data]) => ({ date, data }));
-}
-
-/** Efecto de un movimiento sobre el saldo de una cuenta. */
-export function signedAmountFor(transaction: Transaction, accountId?: string): Money {
-  if (transaction.type === 'income') return transaction.amount;
-  if (transaction.type === 'expense') return -transaction.amount;
-  if (accountId && transaction.toAccountId === accountId) return transaction.amount;
-  return -transaction.amount;
-}
-
-export function totalsOf(transactions: Transaction[]) {
-  const income = sum(transactions.filter((t) => t.type === 'income').map((t) => t.amount));
-  const expense = sum(transactions.filter((t) => t.type === 'expense').map((t) => t.amount));
-  return { income, expense, balance: income - expense };
-}
-
 export function getAvailableMonths(): string[] {
   return [...new Set(sortedTransactions.map((transaction) => monthKey(transaction.date)))];
 }
+
+export { groupByDay, signedAmountFor, totalsOf };
 
 // ---------- Resumen del mes ----------
 

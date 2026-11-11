@@ -8,7 +8,9 @@
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#14251F",
-    "platforms": ["ios"],
+    "platforms": [
+      "ios"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.lujitos.finance"
@@ -24,7 +26,8 @@
           "imageWidth": 96
         }
       ],
-      "expo-system-ui"
+      "expo-system-ui",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

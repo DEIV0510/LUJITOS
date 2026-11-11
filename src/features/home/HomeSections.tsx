@@ -17,7 +17,9 @@ import { NotificationBadge } from '@/components/ui/NotificationBadge';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { DEMO_ADVISOR_TIP, DEMO_NOTIFICATIONS, DEMO_USER } from '@/features/demo/data';
+import { useFinanceData } from '@/features/data/FinanceDataProvider';
+import { DEMO_ADVISOR_TIP, DEMO_NOTIFICATIONS } from '@/features/demo/data';
+import { useAuth } from '@/hooks/auth';
 import {
   getBudgetOverview,
   getHomeAccounts,
@@ -29,9 +31,18 @@ import { greeting, nowInBogota } from '@/lib/dates';
 import { formatPercent } from '@/lib/money';
 import { palette, useAppTheme } from '@/theme';
 
+/** Iniciales para el avatar a partir del perfil real. */
+export function initialsOf(firstName?: string | null, lastName?: string | null): string {
+  const letters = `${firstName?.trim().charAt(0) ?? ''}${lastName?.trim().charAt(0) ?? ''}`.toUpperCase();
+  return letters || 'L';
+}
+
 export function HomeHeader() {
   const { colors, scheme, spacing } = useAppTheme();
-  const unread = DEMO_NOTIFICATIONS.filter((notification) => !notification.read).length;
+  const { profile } = useAuth();
+  const { mode } = useFinanceData();
+  // En modo real todavía no hay avisos (llegan en la Fase 7).
+  const unread = mode === 'demo' ? DEMO_NOTIFICATIONS.filter((notification) => !notification.read).length : 0;
   const { hour } = nowInBogota();
 
   return (
@@ -50,7 +61,7 @@ export function HomeHeader() {
             style={[styles.avatar, { backgroundColor: colors.primary }]}
           >
             <AppText variant="subhead" color="onPrimary" style={styles.avatarText}>
-              {DEMO_USER.initials}
+              {initialsOf(profile?.first_name, profile?.last_name)}
             </AppText>
           </PressableScale>
         </View>
@@ -59,7 +70,9 @@ export function HomeHeader() {
         <AppText variant="callout" color="textSecondary">
           {greeting(hour)},
         </AppText>
-        <AppText variant="largeTitle">{DEMO_USER.firstName}</AppText>
+        <AppText variant="largeTitle" numberOfLines={2}>
+          {profile?.first_name || 'Hola'}
+        </AppText>
       </View>
     </View>
   );

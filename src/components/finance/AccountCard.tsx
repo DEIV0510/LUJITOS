@@ -5,7 +5,8 @@ import { AppText } from '@/components/ui/AppText';
 import { FinancialCard } from '@/components/ui/FinancialCard';
 import { Icon } from '@/components/ui/Icon';
 import { ACCOUNT_KIND_LABEL, METHOD_LABEL } from '@/constants/institutions';
-import { getInstitution, getTransactionsForAccount, signedAmountFor } from '@/features/demo/selectors';
+import { useFinanceData } from '@/features/data/FinanceDataProvider';
+import { getInstitution, signedAmountFor } from '@/features/demo/selectors';
 import { formatShortDate } from '@/lib/dates';
 import { resolveTone, useAppTheme } from '@/theme';
 import type { Account } from '@/types/finance';
@@ -18,6 +19,7 @@ type Props = { account: Account; variant?: 'compact' | 'full' };
 /** Tarjeta de cuenta. 'compact' para el Inicio, 'full' para Mis cuentas. */
 export function AccountCard({ account, variant = 'full' }: Props) {
   const { colors, spacing, scheme } = useAppTheme();
+  const { transactions } = useFinanceData();
   const institution = getInstitution(account);
   const tone = resolveTone(institution.tone, scheme);
   const open = () => router.push({ pathname: '/account/[id]', params: { id: account.id } });
@@ -43,7 +45,7 @@ export function AccountCard({ account, variant = 'full' }: Props) {
     );
   }
 
-  const last = getTransactionsForAccount(account.id)[0];
+  const last = transactions.find((t) => t.accountId === account.id || t.toAccountId === account.id);
   return (
     <FinancialCard onPress={open} accessibilityLabel={`${account.name}, ${kindLabel}, ver detalle`} padding={spacing.lg}>
       <View style={styles.row}>
@@ -68,7 +70,7 @@ export function AccountCard({ account, variant = 'full' }: Props) {
           <Icon name="clock.fill" size={12} color={colors.textTertiary} />
           {last ? (
             <AppText variant="footnote" color="textSecondary" numberOfLines={2} style={styles.flex}>
-              {last.description} · {formatShortDate(last.date)} ·{' '}
+              {last.description || 'Movimiento'} · {formatShortDate(last.date)} ·{' '}
               <AmountText amount={signedAmountFor(last, account.id)} variant="footnote" sign="always" color="textSecondary" />
             </AppText>
           ) : (

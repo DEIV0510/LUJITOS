@@ -32,10 +32,10 @@ export const DEMO_USER = {
 
 export const DEMO_ACCOUNTS: Account[] = [
   { id: 'acc-bancolombia', name: 'Bancolombia Ahorros', institutionId: 'bancolombia', kind: 'savings', balance: cop(5_200_000), initialBalance: cop(3_150_000), currency: 'COP', createdAt: '2025-03-14', lastFour: '4821', method: 'manual' },
-  { id: 'acc-nequi', name: 'Nequi', institutionId: 'nequi', kind: 'wallet', balance: cop(1_250_000), initialBalance: cop(400_000), currency: 'COP', createdAt: '2025-03-14', method: 'manual' },
+  { id: 'acc-nequi', name: 'Nequi', institutionId: 'nequi', kind: 'digital_wallet', balance: cop(1_250_000), initialBalance: cop(400_000), currency: 'COP', createdAt: '2025-03-14', method: 'manual' },
   { id: 'acc-davivienda', name: 'Davivienda Ahorros', institutionId: 'davivienda', kind: 'savings', balance: cop(450_000), initialBalance: cop(600_000), currency: 'COP', createdAt: '2025-05-02', lastFour: '9034', method: 'manual' },
   { id: 'acc-cash', name: 'Efectivo', institutionId: 'cash', kind: 'cash', balance: cop(500_000), initialBalance: cop(300_000), currency: 'COP', createdAt: '2025-03-14', method: 'manual' },
-  { id: 'acc-daviplata', name: 'Daviplata', institutionId: 'daviplata', kind: 'wallet', balance: cop(150_000), initialBalance: cop(100_000), currency: 'COP', createdAt: '2025-08-21', method: 'manual' },
+  { id: 'acc-daviplata', name: 'Daviplata', institutionId: 'daviplata', kind: 'digital_wallet', balance: cop(150_000), initialBalance: cop(100_000), currency: 'COP', createdAt: '2025-08-21', method: 'manual' },
   { id: 'acc-bbva', name: 'BBVA Corriente', institutionId: 'bbva', kind: 'checking', balance: cop(300_000), initialBalance: cop(300_000), currency: 'COP', createdAt: '2025-09-30', lastFour: '1157', method: 'manual' },
   { id: 'acc-bogota', name: 'Banco de Bogotá Ahorros', institutionId: 'bogota', kind: 'savings', balance: cop(200_000), initialBalance: cop(200_000), currency: 'COP', createdAt: '2026-01-12', lastFour: '6402', method: 'manual' },
   { id: 'acc-emergency', name: 'Fondo de emergencia', institutionId: 'custom', kind: 'other', balance: cop(400_000), initialBalance: cop(0), currency: 'COP', createdAt: '2026-02-01', method: 'manual' },

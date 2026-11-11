@@ -3,14 +3,17 @@
 Gestor de finanzas personales para iPhone. Colombia, español, pesos colombianos (COP),
 zona horaria America/Bogota. **TU DINERO, BAJO CONTROL.**
 
-Estado: **Fase 2 completa** (identidad visual y todas las pantallas con navegación).
-Los datos son **de demostración**: nada se guarda todavía (eso llega en la Fase 3).
+Estado: **Fase 3** — usuarios reales con Supabase (registro, inicio de sesión,
+recuperación de contraseña, perfil, onboarding), base PostgreSQL con RLS y cuentas y
+movimientos guardados de verdad. La demostración sigue disponible en Configuración.
 
 ## Requisitos
 
 - Node.js 20 o superior (probado con 24.16.0) y npm.
 - iPhone con **Expo Go** actualizado desde App Store (debe abrir proyectos SDK 58).
 - Cuenta Expo con sesión iniciada en el PC (`npx expo login`) y en Expo Go, para el túnel.
+- Proyecto de Supabase y `.env.local` con su URL y clave publicable: ver
+  [docs/SUPABASE.md](docs/SUPABASE.md).
 
 ## Comandos
 
@@ -20,7 +23,12 @@ Los datos son **de demostración**: nada se guarda todavía (eso llega en la Fas
 | `npm run start:tunnel` | **Forma habitual**: túnel de Expo, funciona en cualquier red. |
 | `npm start` | Red local (PC e iPhone en la misma Wi-Fi). |
 | `npm run start:clear` | Red local borrando la caché de Metro. |
-| `npm run check` | TypeScript + ESLint. |
+| `npm run check` | TypeScript + ESLint + pruebas unitarias + pruebas SQL locales. |
+| `npm test` | Pruebas unitarias (jest-expo). |
+| `npm run test:db` | Migraciones y seguridad RLS en PostgreSQL local. |
+| `npm run test:db:remote` | Seguridad RLS en el proyecto real. |
+| `npm run test:integration` | Auth y aislamiento entre usuarios por la API real. |
+| `npm run db:push` | Aplica las migraciones al proyecto vinculado. |
 | `npm run bundle:ios` | Compila el bundle de iOS para comprobar que no hay errores. |
 | `npx expo-doctor` | Revisa configuración y versiones. |
 
@@ -52,13 +60,14 @@ que fijar la IP del Wi-Fi: `$env:REACT_NATIVE_PACKAGER_HOSTNAME = '<IP>'; npm.cm
 
 - [Arquitectura y decisiones técnicas](docs/ARQUITECTURA.md)
 - [Sistema de diseño e identidad](docs/DISENO.md)
+- [Supabase: proyecto, variables, migraciones, auth y pruebas](docs/SUPABASE.md)
 - [Instrucciones para agentes de código](AGENTS.md)
 
 ## Fases
 
 1. Configuración del proyecto y entorno — **hecha**
 2. Identidad visual y diseño de pantallas — **hecha**
-3. Autenticación y base de datos
+3. Autenticación y base de datos — **en curso**
 4. Inicio y cuentas
 5. Movimientos y cálculos financieros
 6. Presupuestos y objetivos de ahorro

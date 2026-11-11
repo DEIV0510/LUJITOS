@@ -6,6 +6,8 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withDelay,
+  withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -22,32 +24,53 @@ const COIN_R = (10.5 / 72) * MARK;
 const COIN_X = ((65.5 - 24) / 72) * MARK;
 const COIN_Y = ((66.5 - 24) / 72) * MARK;
 
+const FADE_OUT = 420;
+
 /**
  * Apertura: la «L» aparece, la moneda dorada se asienta en su esquina y la
  * pantalla se disuelve hacia la app. Con «Reducir movimiento» solo hay un fundido corto.
+ *
+ * También es la pantalla de carga: no se disuelve hasta que `ready` sea true
+ * (sesión comprobada), así nunca se ve el panel antes de saber si hay sesión.
  */
-export function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
+export function AnimatedSplash({ onFinish, ready = true }: { onFinish: () => void; ready?: boolean }) {
   const reduceMotion = useReducedMotion();
   const [started, setStarted] = useState(false);
+  const [minimumShown, setMinimumShown] = useState(false);
 
   const mark = useSharedValue(reduceMotion ? 1 : 0);
   const coin = useSharedValue(reduceMotion ? 1 : 0);
   const words = useSharedValue(reduceMotion ? 1 : 0);
+  const pulse = useSharedValue(1);
   const screen = useSharedValue(1);
 
+  // Entrada: se cuenta desde que la apertura se pintó, no desde que se montó.
   useEffect(() => {
     if (!started) return;
-    const total = reduceMotion ? 700 : 1900;
+    const minimum = reduceMotion ? 300 : 1480;
     if (!reduceMotion) {
       mark.set(withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }));
       coin.set(withDelay(320, withSpring(1, { damping: 11, stiffness: 140, mass: 0.9 })));
       words.set(withDelay(520, withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) })));
     }
-    screen.set(withDelay(total - 420, withTiming(0, { duration: 420, easing: Easing.inOut(Easing.quad) })));
-    // El fin se agenda desde que la apertura se pintó, no desde que se montó.
-    const timer = setTimeout(onFinish, total + 40);
+    const timer = setTimeout(() => setMinimumShown(true), minimum);
     return () => clearTimeout(timer);
-  }, [started, reduceMotion, mark, coin, words, screen, onFinish]);
+  }, [started, reduceMotion, mark, coin, words]);
+
+  // Si la sesión tarda (red lenta), la moneda late suavemente mientras espera.
+  useEffect(() => {
+    if (!minimumShown || ready || reduceMotion) return;
+    pulse.set(withRepeat(withSequence(withTiming(0.55, { duration: 650 }), withTiming(1, { duration: 650 })), -1));
+  }, [minimumShown, ready, reduceMotion, pulse]);
+
+  // Salida: solo cuando pasó el mínimo y la sesión ya se comprobó.
+  useEffect(() => {
+    if (!minimumShown || !ready) return;
+    pulse.set(withTiming(1, { duration: 150 }));
+    screen.set(withTiming(0, { duration: FADE_OUT, easing: Easing.inOut(Easing.quad) }));
+    const timer = setTimeout(onFinish, FADE_OUT + 40);
+    return () => clearTimeout(timer);
+  }, [minimumShown, ready, screen, pulse, onFinish]);
 
   const screenStyle = useAnimatedStyle(() => ({ opacity: screen.value }));
   const markStyle = useAnimatedStyle(() => ({
@@ -55,7 +78,7 @@ export function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
     transform: [{ scale: 0.88 + mark.value * 0.12 }],
   }));
   const coinStyle = useAnimatedStyle(() => ({
-    opacity: Math.min(coin.value * 1.6, 1),
+    opacity: Math.min(coin.value * 1.6, 1) * pulse.value,
     transform: [{ translateY: (1 - coin.value) * -34 }],
   }));
   const wordStyle = useAnimatedStyle(() => ({

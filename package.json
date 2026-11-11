@@ -10,21 +10,34 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "bundle:ios": "expo export --platform ios --output-dir dist",
-    "check": "npm run typecheck && npm run lint"
+    "check": "npm run typecheck && npm run lint && npm run test -- --silent && npm run test:db",
+    "test": "jest",
+    "test:db": "node scripts/test-db-local.mjs",
+    "test:db:remote": "npx --yes supabase@3.1.0 db query --remote --yes -f supabase/tests/rls_security.test.sql",
+    "test:integration": "node scripts/test-integration.mjs",
+    "test:users": "node scripts/create-test-users.mjs",
+    "test:users:clean": "npx --yes supabase@3.1.0 db query --remote --yes -f supabase/tests/cleanup_test_users.sql",
+    "db:push": "npx --yes supabase@3.1.0 db push",
+    "db:types": "npx --yes supabase@3.1.0 gen types typescript --linked > src/types/database.generated.ts"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.119.0",
+    "@types/jest": "30.0.0",
     "expo": "~58.0.23",
     "expo-constants": "~58.0.15",
     "expo-font": "~58.0.11",
     "expo-haptics": "~58.0.7",
     "expo-linking": "~58.0.16",
     "expo-router": "~58.0.30",
+    "expo-secure-store": "~58.0.2",
     "expo-splash-screen": "~58.0.13",
     "expo-status-bar": "~58.0.4",
     "expo-symbols": "~58.0.4",
     "expo-system-ui": "~58.0.7",
+    "jest": "~30.5.2",
+    "jest-expo": "~58.0.14",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",
@@ -32,12 +45,25 @@
     "react-native-safe-area-context": "~5.11.1",
     "react-native-screens": "~4.30.1",
     "react-native-svg": "15.16.0",
-    "react-native-worklets": "0.13.0"
+    "react-native-url-polyfill": "^4.0.0",
+    "react-native-worklets": "0.13.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
     "@types/react": "~19.3.0",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~58.0.4",
     "typescript": "~6.0.3"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    },
+    "testMatch": [
+      "<rootDir>/tests/unit/**/*.test.ts"
+    ],
+    "clearMocks": true
   }
 }

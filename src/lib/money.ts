@@ -1,17 +1,29 @@
 /**
- * Dinero en LUJITOS: siempre enteros en CENTAVOS de peso colombiano.
- * Nunca se suman decimales de JavaScript. En pantalla se muestran pesos sin
- * decimales con el formato colombiano: $ 1.250.000
+ * Dinero en LUJITOS: siempre PESOS COLOMBIANOS ENTEROS (COP no usa centavos en
+ * la práctica). En la base son BIGINT; en la app, números enteros. Nunca se
+ * opera con decimales. En pantalla: $ 1.250.000
+ *
+ * Los enteros de JavaScript son exactos hasta 9.007.199.254.740.991, muy por
+ * encima de cualquier monto personal en pesos.
  */
 export type Money = number;
 
-/** Convierte pesos a centavos. */
+/** Normaliza un valor a pesos enteros. */
 export function cop(pesos: number): Money {
-  return Math.round(pesos * 100);
+  return Math.round(pesos);
 }
 
+/** Valor en pesos (identidad: la unidad interna ya es el peso). */
 export function toPesos(amount: Money): number {
-  return Math.round(amount / 100);
+  return Math.round(amount);
+}
+
+/** Convierte lo que devuelve PostgreSQL (BIGINT llega como número o texto) a pesos. */
+export function fromDb(value: number | string | null | undefined): Money {
+  if (value === null || value === undefined) return 0;
+  const parsed = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isSafeInteger(parsed)) throw new Error('Monto fuera de rango');
+  return parsed;
 }
 
 export const MINUS = '\u2212';

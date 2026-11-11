@@ -25,10 +25,12 @@ export type Institution = {
   icon?: IconName;
 };
 
+/** Igual al enum public.account_type de la base de datos. */
 export type AccountKind =
+  | 'bank'
   | 'savings'
   | 'checking'
-  | 'wallet'
+  | 'digital_wallet'
   | 'cash'
   | 'investment'
   | 'credit_card'
@@ -51,13 +53,20 @@ export type Account = {
   lastFour?: string;
   method: RegistrationMethod;
   creditLimit?: Money;
+  isActive?: boolean;
+  color?: string | null;
 };
 
+/** Tipos que se registran desde el formulario. */
 export type TransactionType = 'income' | 'expense' | 'transfer';
+/** Tipos que pueden existir en la base (incluye ajustes de saldo). */
+export type StoredTransactionType = TransactionType | 'adjustment';
 
 export type Transaction = {
   id: string;
-  type: TransactionType;
+  type: StoredTransactionType;
+  /** Solo ajustes: +1 suma, −1 resta. */
+  adjustmentSign?: 1 | -1;
   /** Siempre positivo; el tipo define si suma o resta. */
   amount: Money;
   accountId: string;
@@ -79,6 +88,9 @@ export type Category = {
   kind: CategoryKind;
   icon: IconName;
   tone: Tone;
+  /** Clave estable de las categorías del sistema (salary, food…). */
+  slug?: string | null;
+  isDefault?: boolean;
 };
 
 export type BudgetLine = {

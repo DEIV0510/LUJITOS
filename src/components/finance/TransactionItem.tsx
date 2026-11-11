@@ -2,8 +2,9 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
-import { getCategory, TRANSFER_CATEGORY } from '@/constants/categories';
-import { getAccount, getInstitution } from '@/features/demo/selectors';
+import { INSTITUTIONS } from '@/constants/institutions';
+import { TRANSACTION_TYPE_LABEL } from '@/constants/transactions';
+import { useFinanceData } from '@/features/data/FinanceDataProvider';
 import { usePrivacy } from '@/features/privacy/PrivacyProvider';
 import { formatShortDate } from '@/lib/dates';
 import { formatMoney } from '@/lib/money';
@@ -20,13 +21,11 @@ type Props = {
   showDivider?: boolean;
 };
 
-const TYPE_LABEL = { income: 'Ingreso', expense: 'Gasto', transfer: 'Transferencia' } as const;
-
 /** Nombre corto para las listas: la entidad («Bancolombia») o el nombre propio de la cuenta. */
 function shortAccountName(account: Account | undefined): string {
   if (!account) return '';
   if (account.kind === 'credit_card') return account.name;
-  const institution = getInstitution(account);
+  const institution = INSTITUTIONS[account.institutionId];
   return account.institutionId === 'custom' || account.institutionId === 'cash' ? account.name : institution.name;
 }
 
@@ -34,8 +33,10 @@ function shortAccountName(account: Account | undefined): string {
 export function TransactionItem({ transaction, meta = 'category', showDivider }: Props) {
   const { colors } = useAppTheme();
   const { hidden } = usePrivacy();
+  const { getAccount, getCategory } = useFinanceData();
   const isTransfer = transaction.type === 'transfer';
-  const category = isTransfer ? TRANSFER_CATEGORY : getCategory(transaction.categoryId);
+  const isAdjustment = transaction.type === 'adjustment';
+  const category = getCategory(isTransfer ? 'transfer' : isAdjustment ? 'adjustment' : transaction.categoryId);
   const account = getAccount(transaction.accountId);
   const target = getAccount(transaction.toAccountId);
 
@@ -48,12 +49,17 @@ export function TransactionItem({ transaction, meta = 'category', showDivider }:
       : isTransfer
         ? accountText
         : `${category.name} · ${accountText}`;
-  const signed = transaction.type === 'expense' ? -transaction.amount : transaction.amount;
+  const signed =
+    transaction.type === 'expense'
+      ? -transaction.amount
+      : isAdjustment
+        ? transaction.amount * (transaction.adjustmentSign ?? 1)
+        : transaction.amount;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${TYPE_LABEL[transaction.type]}: ${transaction.description}, ${
+      accessibilityLabel={`${TRANSACTION_TYPE_LABEL[transaction.type]}: ${transaction.description}, ${
         hidden ? 'valor oculto' : formatMoney(transaction.amount)
       }, ${metaText}`}
       accessibilityHint="Abre el detalle del movimiento"
@@ -67,7 +73,7 @@ export function TransactionItem({ transaction, meta = 'category', showDivider }:
       <CategoryIcon category={category} size={42} />
       <View style={styles.texts}>
         <AppText variant="bodyStrong" numberOfLines={2}>
-          {transaction.description}
+          {transaction.description || category.name}
         </AppText>
         <AppText variant="footnote" color="textSecondary" numberOfLines={2}>
           {metaText}

@@ -86,6 +86,18 @@ export const INITIAL_CONVERSATION: AdvisorMessage[] = [
   { id: 'm-3', role: 'assistant', text: demoReply('¿Cuánto dinero tengo?'), example: true },
 ];
 
+/** Con datos reales el asesor todavía no está conectado: no se inventan respuestas. */
+export const LIVE_CONVERSATION: AdvisorMessage[] = [
+  {
+    id: 'm-live-1',
+    role: 'assistant',
+    text: 'Hola. Soy el asesor de LUJITOS. Todavía no estoy conectado: en la Fase 9 podré responder con tus datos reales, solo si me das permiso y usando la información mínima necesaria.',
+  },
+];
+
+export const LIVE_REPLY =
+  'Todavía no puedo responder: el asesor se conecta en la Fase 9. No voy a inventar cifras sobre tu dinero. Mientras tanto, tus saldos y movimientos están en Inicio, Cuentas y Movimientos.';
+
 export const RECOMMENDATIONS = [
   {
     id: 'r-1',

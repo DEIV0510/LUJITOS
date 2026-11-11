@@ -16,9 +16,10 @@ export const INSTITUTIONS: Record<InstitutionId, Institution> = {
 };
 
 export const ACCOUNT_KIND_LABEL: Record<AccountKind, string> = {
+  bank: 'Cuenta bancaria',
   savings: 'Cuenta de ahorros',
   checking: 'Cuenta corriente',
-  wallet: 'Billetera digital',
+  digital_wallet: 'Billetera digital',
   cash: 'Efectivo',
   investment: 'Inversión',
   credit_card: 'Tarjeta de crédito',
@@ -36,10 +37,11 @@ export const ACCOUNT_GROUP_LABEL: Record<AccountGroup, string> = {
 
 export function groupOf(kind: AccountKind): AccountGroup {
   switch (kind) {
+    case 'bank':
     case 'savings':
     case 'checking':
       return 'banks';
-    case 'wallet':
+    case 'digital_wallet':
       return 'wallets';
     case 'cash':
       return 'cash';

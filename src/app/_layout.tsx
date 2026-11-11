@@ -12,7 +12,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AnimatedSplash } from '@/components/brand/AnimatedSplash';
+import { navigationGuards } from '@/features/auth/navigation';
+import { ProfileErrorScreen, SetupRequiredScreen } from '@/features/auth/StatusScreens';
 import { PrivacyProvider } from '@/features/privacy/PrivacyProvider';
+import { AuthProvider, useAuth } from '@/hooks/auth';
 import { fontAssets, ThemeProvider, useAppTheme } from '@/theme';
 
 // El splash nativo se mantiene hasta que carguen las fuentes; luego sigue la apertura animada.
@@ -31,14 +34,26 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <PrivacyProvider>
-        <AppShell />
+        <AuthProvider>
+          <AppShell />
+        </AuthProvider>
       </PrivacyProvider>
     </ThemeProvider>
   );
 }
 
+/**
+ * Navegación según el estado de autenticación:
+ *   cargando     → apertura (nunca se ve el panel antes de comprobar la sesión)
+ *   sin sesión   → (auth): bienvenida, registro, inicio de sesión
+ *   con sesión   → onboarding la primera vez; luego (app)
+ *   recuperación → solo reset-password
+ * Las rutas privadas viven en el grupo (app): una pantalla nueva ahí queda
+ * protegida automáticamente.
+ */
 function AppShell() {
   const { scheme, colors } = useAppTheme();
+  const { status, profile, profileError, recovery } = useAuth();
   const [introDone, setIntroDone] = useState(false);
   const finishIntro = useCallback(() => setIntroDone(true), []);
 
@@ -58,22 +73,42 @@ function AppShell() {
     };
   }, [scheme, colors]);
 
-  return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
+  const guards = navigationGuards({ status, onboarded: Boolean(profile?.onboarding_completed_at), recovery });
+  const ready = !guards.loading;
+  const signedIn = status === 'signedIn';
+
+  let content: React.ReactNode = null;
+  if (guards.setup) {
+    content = <SetupRequiredScreen />;
+  } else if (signedIn && !profile && profileError) {
+    content = <ProfileErrorScreen message={profileError} />;
+  } else if (ready) {
+    content = (
       <NavigationThemeProvider value={navigationTheme}>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.background },
-          }}
-        >
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="transaction/new" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="account/new" options={{ presentation: 'modal' }} />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+          <Stack.Protected guard={guards.app}>
+            <Stack.Screen name="(app)" />
+          </Stack.Protected>
+          <Stack.Protected guard={guards.onboarding}>
+            <Stack.Screen name="onboarding" options={{ animation: 'fade', gestureEnabled: false }} />
+          </Stack.Protected>
+          <Stack.Protected guard={guards.auth}>
+            <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
+          </Stack.Protected>
+          {/* Destinos de los enlaces de correo: accesibles en cualquier estado. */}
+          <Stack.Screen name="reset-password" options={{ gestureEnabled: false }} />
+          <Stack.Screen name="auth/callback" options={{ animation: 'fade' }} />
+          <Stack.Screen name="legal" options={{ presentation: 'modal' }} />
         </Stack>
       </NavigationThemeProvider>
+    );
+  }
+
+  return (
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      {content}
       <StatusBar style={!introDone || scheme === 'dark' ? 'light' : 'dark'} animated />
-      {!introDone ? <AnimatedSplash onFinish={finishIntro} /> : null}
+      {!introDone ? <AnimatedSplash ready={ready} onFinish={finishIntro} /> : null}
     </View>
   );
 }

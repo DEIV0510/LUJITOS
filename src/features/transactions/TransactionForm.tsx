@@ -10,6 +10,7 @@ import { MoneyInput } from '@/components/finance/MoneyInput';
 import { ScreenHeader } from '@/components/layout/Headers';
 import { AppText } from '@/components/ui/AppText';
 import { IconButton, PrimaryButton } from '@/components/ui/Buttons';
+import { FormMessage } from '@/features/auth/components';
 import { DemoNotice } from '@/components/ui/DemoNotice';
 import { FinancialCard } from '@/components/ui/FinancialCard';
 import { FilterChip, SelectField, TextField } from '@/components/ui/FormField';
@@ -17,8 +18,8 @@ import { Icon } from '@/components/ui/Icon';
 import { OptionSheet } from '@/components/ui/OptionSheet';
 import { ListRow } from '@/components/ui/Rows';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { categoriesOf, getCategory } from '@/constants/categories';
-import { getAccount, getAccounts, getInstitution } from '@/features/demo/selectors';
+import { useFinanceData } from '@/features/data/FinanceDataProvider';
+import { getInstitution } from '@/features/demo/selectors';
 import { usePrivacy } from '@/features/privacy/PrivacyProvider';
 import { addDays, formatMonthYear, formatWeekdayDate, nowInBogota, parseISO, type ISODate } from '@/lib/dates';
 import { haptics } from '@/lib/haptics';
@@ -75,6 +76,11 @@ export function TransactionForm({ initialType = 'expense', initialAccountId, ini
   const insets = useSafeAreaInsets();
   const amountRef = useRef<ComponentRef<typeof TextInput>>(null);
   const today = nowInBogota().date;
+  const { mode, accounts: allAccounts, categories, getAccount, getCategory, createTransaction } = useFinanceData();
+  const accounts = allAccounts.filter((item) => item.isActive !== false);
+  const isDemo = mode === 'demo';
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [draft, setDraft] = useState<Draft>({
     type: initialType,
@@ -109,12 +115,34 @@ export function TransactionForm({ initialType = 'expense', initialAccountId, ini
     setErrors({});
   };
 
-  const save = () => {
+  const save = async () => {
     const found = validateDraft(draft);
     setErrors(found);
+    setSubmitError(null);
     if (Object.values(found).some(Boolean)) {
       haptics.error();
       return;
+    }
+    if (!isDemo && draft.accountId) {
+      setSubmitting(true);
+      try {
+        await createTransaction({
+          type: draft.type,
+          amount: draft.amount,
+          accountId: draft.accountId,
+          toAccountId: draft.toAccountId,
+          categoryId: draft.categoryId,
+          description: draft.description,
+          date: draft.date,
+          notes: draft.notes,
+        });
+      } catch (error) {
+        haptics.error();
+        setSubmitError(error instanceof Error ? error.message : 'No pudimos guardar el movimiento.');
+        setSubmitting(false);
+        return;
+      }
+      setSubmitting(false);
     }
     haptics.success();
     setSaved(true);
@@ -134,10 +162,12 @@ export function TransactionForm({ initialType = 'expense', initialAccountId, ini
         </Animated.View>
         <Animated.View entering={FadeIn.delay(150)} style={{ alignItems: 'center', gap: spacing.xs }}>
           <AppText variant="title" align="center">
-            Movimiento validado
+            {isDemo ? 'Movimiento validado' : 'Movimiento guardado'}
           </AppText>
           <AppText variant="callout" color="textSecondary" align="center" style={styles.savedText}>
-            Prototipo: no se guardó en ninguna base de datos. Eso llega en la Fase 3.
+            {isDemo
+              ? 'Modo demostración: no se guardó nada.'
+              : 'Ya cuenta en el saldo de tus cuentas.'}
           </AppText>
         </Animated.View>
       </View>
@@ -231,16 +261,20 @@ export function TransactionForm({ initialType = 'expense', initialAccountId, ini
             </AppText>
           ) : null}
 
-          <DemoNotice text="Prototipo: el movimiento se valida pero no se guarda. La base de datos se conecta en la Fase 3." />
+          <FormMessage message={submitError} />
+          {isDemo ? <DemoNotice text="Modo demostración: el movimiento se valida pero no se guarda." /> : null}
+          {!isDemo && accounts.length === 0 ? (
+            <DemoNotice text="Primero agrega una cuenta: todo movimiento sale o entra de una cuenta." />
+          ) : null}
         </ScrollView>
 
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.lg), borderTopColor: colors.border, backgroundColor: colors.background }]}>
-          <PrimaryButton label={SAVE_LABEL[draft.type]} size="large" onPress={save} />
+          <PrimaryButton label={SAVE_LABEL[draft.type]} size="large" loading={submitting} onPress={save} />
         </View>
       </KeyboardAvoidingView>
 
       <OptionSheet visible={sheet === 'account' || sheet === 'toAccount'} title={sheet === 'toAccount' ? 'Cuenta de destino' : 'Elegir cuenta'} onClose={() => setSheet(null)}>
-        {getAccounts().map((option, index) => (
+        {accounts.map((option, index) => (
           <ListRow
             key={option.id}
             title={option.name}
@@ -257,7 +291,7 @@ export function TransactionForm({ initialType = 'expense', initialAccountId, ini
 
       <OptionSheet visible={sheet === 'category'} title={draft.type === 'income' ? 'Categoría del ingreso' : 'Categoría del gasto'} onClose={() => setSheet(null)}>
         <View style={styles.categoryGrid}>
-          {categoriesOf(draft.type === 'income' ? 'income' : 'expense').map((option) => {
+          {categories.filter((item) => item.kind === (draft.type === 'income' ? 'income' : 'expense')).map((option) => {
             const selected = option.id === draft.categoryId;
             return (
               <View key={option.id} style={styles.categoryCell}>

@@ -13,8 +13,9 @@ import { AmountText } from './AmountText';
 
 type Props = {
   netWorth: Money;
-  netWorthChange: Money;
-  previousNetWorth: Money;
+  /** Sin histórico todavía (datos reales nuevos): se oculta la variación. */
+  netWorthChange?: Money;
+  previousNetWorth?: Money;
   available: Money;
   investments: Money;
   debts: Money;
@@ -27,8 +28,8 @@ type Props = {
 export function BalanceCard({ netWorth, netWorthChange, previousNetWorth, available, investments, debts }: Props) {
   const { colors, spacing } = useAppTheme();
   const { hidden, toggle } = usePrivacy();
-  const change = percentChange(netWorth, previousNetWorth);
-  const up = netWorthChange >= 0;
+  const change = previousNetWorth === undefined ? null : percentChange(netWorth, previousNetWorth);
+  const up = (netWorthChange ?? 0) >= 0;
   const changeColor = up ? palette.sage : '#F2A7A7';
 
   return (
@@ -52,6 +53,7 @@ export function BalanceCard({ netWorth, netWorthChange, previousNetWorth, availa
 
       <AmountText amount={netWorth} variant="display" color="onBrand" fit style={{ marginTop: spacing.xs }} />
 
+      {netWorthChange === undefined ? null : (
       <View style={[styles.change, { marginTop: spacing.sm }]}>
         <Icon name={up ? 'arrow.up.right' : 'arrow.down.right'} size={13} color={changeColor} weight="bold" />
         <AppText variant="subhead" style={{ color: changeColor, flexShrink: 1 }} numberOfLines={2}>
@@ -59,6 +61,7 @@ export function BalanceCard({ netWorth, netWorthChange, previousNetWorth, availa
           {change !== null && !hidden ? ` (${formatPercent(change, { sign: true })})` : ''} este mes
         </AppText>
       </View>
+      )}
 
       <View style={[styles.divider, { backgroundColor: colors.brandLine, marginVertical: spacing.lg }]} />
 

@@ -64,14 +64,20 @@ src/
     transactions/     Formulario de registro.
     advisor/          Respuestas de ejemplo del asesor.
     privacy/          Ocultar o mostrar montos en toda la app.
-  hooks/  services/   Vacíos hasta la Fase 3.
-  lib/                money.ts, dates.ts, haptics.ts (lógica central).
+    data/             FinanceDataProvider (real/demo), summaries.ts, ComingSoon.
+    auth/             Validaciones (Zod), componentes y protección de rutas.
+  hooks/auth/         AuthProvider + useAuth: sesión, perfil y estados.
+  services/auth/      Registro, inicio y cierre de sesión, recuperación, enlaces.
+  services/database/  Perfil, preferencias, cuentas, categorías y movimientos.
+  lib/                money.ts, dates.ts, haptics.ts, supabase.ts, supabase-storage.ts.
   constants/          app.ts, categories.ts, institutions.ts.
-  types/              finance.ts (modelo de datos de la app).
+  types/              finance.ts (modelo de la app) y database.ts (tablas de Supabase).
   utils/              color.ts.
   theme/              Sistema de diseño.
 assets/images/        icon.png (1024, sin transparencia) y splash-icon.png.
-supabase/             migrations y functions (Fase 3).
+supabase/             config.toml (auth), migrations/ (4 migraciones), tests/ (RLS).
+scripts/              Pruebas de base local e integración, usuarios de prueba.
+tests/unit/           Pruebas unitarias (jest-expo).
 docs/                 ARQUITECTURA.md, DISENO.md.
 ```
 
@@ -93,50 +99,99 @@ src/app/
   transaction/[id]  transaction/new   Detalle de movimiento · registro rápido (hoja modal)
   profile  notifications  settings
   budgets  savings  debts  cards  calendar  recurring
-  (auth)/                   Fase 3
+  (auth)/welcome · sign-in · sign-up · check-email · forgot-password
+  onboarding                5 pasos tras el primer registro
+  reset-password            Destino del enlace de recuperación
+  auth/callback             Destino del enlace de confirmación
+  legal                     Términos y privacidad
 ```
+
+Las pantallas privadas viven en el grupo `(app)` (no cambia ninguna dirección). El
+layout raíz usa `Stack.Protected` con `navigationGuards()` (`src/features/auth/navigation.ts`):
+
+| Estado | Zona accesible |
+| --- | --- |
+| Cargando sesión | Ninguna: se mantiene la apertura animada |
+| Sin sesión | `(auth)` |
+| Con sesión, sin onboarding | `onboarding` |
+| Con sesión y onboarding | `(app)` |
+| Recuperación de contraseña | Solo `reset-password` |
+| Sin variables de Supabase | Guía de configuración |
 
 Barra inferior propia (no la nativa de iOS) porque necesita el botón flotante de
 «Agregar» y el indicador de la marca. Respeta el área segura inferior.
 
-### Datos de demostración
+### Datos reales y datos de demostración
 
-Todas las pantallas leen datos a través de `src/features/demo/selectors.ts`, nunca de
-`data.ts` directamente salvo catálogos fijos. En la Fase 3 esas funciones pasan a
-consultar Supabase y las pantallas no cambian. Los totales del resumen del mes, el
-presupuesto y los gráficos de semana y mes se calculan desde la lista de movimientos,
-así que cuadran entre sí.
+`FinanceDataProvider` (`src/features/data`) es la única fuente de datos de las pantallas:
+
+- **Modo real (por defecto):** cuentas (con saldo de la vista `account_balances`),
+  categorías y movimientos del usuario en Supabase. Sin cuentas → estado vacío con
+  «Agregar cuenta».
+- **Modo demostración:** datos ficticios de `src/features/demo`, siempre con aviso y
+  botón para volver. Se activa en Configuración. Nunca se mezcla con lo real.
+
+Inicio, Cuentas, Movimientos, detalle de cuenta/movimiento y los formularios funcionan
+con datos reales. Estadísticas y los módulos de las fases 6–8 muestran «Llega en la Fase X»
+en modo real (`LiveGate`). El proveedor se monta con `key` = id de usuario: al cambiar de
+usuario no puede quedar ningún dato del anterior en memoria.
 
 ## 5. Dinero y cálculos (regla de la casa)
 
-- **Base de datos**: montos en `numeric(16,2)` y `currency char(3)` con `'COP'` por defecto.
-- **App**: los montos viajan como enteros en centavos. Nunca se suma con decimales de
-  JavaScript. Toda operación vive en `src/lib/money` y tiene pruebas (Fase 5).
+- **Pesos colombianos enteros en todas partes** (decisión de la Fase 3): `BIGINT` en la
+  base y enteros en la app. COP no usa centavos en la práctica y así no hay conversiones.
+  Los enteros de JavaScript son exactos hasta 9 × 10¹⁵. Formato y lectura en `src/lib/money.ts`.
+- Los importes de movimientos son siempre positivos (`CHECK amount > 0`); el tipo define
+  si suma o resta. Los ajustes llevan `adjustment_sign` (+1/−1).
 - **Saldo actual** = saldo inicial + suma de movimientos. Se calcula, no se escribe a mano;
   `account_snapshots` guarda la foto diaria para las gráficas de evolución.
 - **Transferencias** entre cuentas propias: no cuentan como ingreso ni gasto.
 - **Tarjetas de crédito**: la compra es el gasto (aumenta la deuda de la tarjeta). El pago
   de la tarjeta es una transferencia de la cuenta bancaria a la tarjeta, no otro gasto.
   Así nada se cuenta dos veces.
-- **Fechas**: `timestamptz` en UTC; los meses y semanas se calculan en `America/Bogota`.
+- **Fechas**: `transaction_date` es `date` (día de Bogotá); marcas de tiempo en `timestamptz`.
+- **Integridad histórica**: las cuentas no se borran, se archivan (`is_active`, `archived_at`);
+  los movimientos se marcan con `deleted_at` y dejan de contar. No hay políticas DELETE para ellos.
+- **Cuentas de otros usuarios**: los movimientos y los históricos usan claves foráneas
+  compuestas `(account_id, user_id)`: aunque alguien conozca el UUID de una cuenta ajena,
+  la base rechaza la referencia.
 
-## 6. Datos y validación (Fases 3 y 5)
+## 6. Base de datos (Fase 3)
 
-- Supabase: Postgres, Auth, RLS y Edge Functions. Tablas previstas: `profiles`, `accounts`,
-  `transactions`, `categories`, `budgets`, `budget_categories`, `savings_goals`, `debts`,
-  `recurring_transactions`, `account_snapshots`, `import_batches`, `institution_connections`,
-  `transaction_rules`, `notifications`, `user_preferences`.
-- Formularios: React Hook Form + Zod 4. Los mismos esquemas validan en la app y antes
-  de escribir en la base. Hace falta `@hookform/resolvers` para unirlos.
-- Caché y sincronización: se propondrá TanStack Query al empezar la Fase 3 (no instalado).
+Tablas creadas (todas con RLS): `profiles`, `accounts`, `categories`, `transactions`,
+`account_snapshots`, `user_preferences`, más la vista `account_balances` (security_invoker).
+Pendientes para sus fases: `budgets`, `budget_categories`, `savings_goals`, `debts`,
+`recurring_transactions`, `import_batches`, `institution_connections`, `transaction_rules`,
+`notifications`. Guía completa: [SUPABASE.md](SUPABASE.md).
+
+| Tabla | SELECT | INSERT | UPDATE | DELETE |
+| --- | --- | --- | --- | --- |
+| profiles | propio | solo el trigger de registro | propio, columnas permitidas (no el correo) | no |
+| user_preferences | propias | solo el trigger | propias, columnas permitidas | no |
+| accounts | propias | propias | propias (no cambia de dueño) | no: se archivan |
+| categories | sistema + propias | propias (nunca del sistema) | propias | propias sin movimientos |
+| transactions | propios | propios (cuentas y categorías válidas) | propios | no: borrado lógico |
+| account_snapshots | propios | propios | no | no |
+
+El rol anónimo no tiene ningún permiso sobre estas tablas. Validaciones del lado de la
+base: montos positivos, forma de transferencias (origen ≠ destino, sin categoría),
+categoría obligatoria y del tipo correcto en ingresos/gastos, sin movimientos nuevos en
+cuentas archivadas, dueño inmutable.
+
+Validación en la app con Zod 4 (`src/features/auth/validation.ts`). React Hook Form no se
+instaló: los formularios actuales no lo necesitan.
 
 ## 7. Seguridad
 
 - RLS en todas las tablas: cada fila tiene `user_id` y solo la ve `auth.uid()`.
 - En la app solo va la clave pública de Supabase (`EXPO_PUBLIC_…`). La clave de servicio
   y la de Claude viven como secretos de Edge Functions, nunca en el teléfono.
-- Sesión: la clave de cifrado en SecureStore y la sesión cifrada en almacenamiento local,
-  porque iOS puede rechazar valores grandes en el llavero (patrón recomendado por Supabase).
+- Sesión: **solo en el llavero de iOS** (Expo SecureStore, accesible tras el primer
+  desbloqueo y solo en este dispositivo). Como iOS puede rechazar valores grandes, la sesión
+  se parte en trozos de 1.800 caracteres (`src/lib/supabase-storage.ts`). Nunca en AsyncStorage.
+- «Recordar sesión» desactivado: la sesión vive solo en memoria.
+- Renovación automática del token solo con la app en primer plano (`AppState`), flujo PKCE
+  en los enlaces de correo y nada de la sesión en los logs.
 - Nunca contraseñas de bancos, nunca número completo de tarjeta (solo los últimos 4).
 - Sin scraping bancario. Conexiones solo por Open Finance con entidades compatibles (Fase 10).
 - Asesor IA: consentimiento explícito y datos mínimos (totales y categorías, no el detalle
@@ -157,12 +212,14 @@ así que cuadran entre sí.
 | expo-haptics | ~58.0.7 | Sí | Instalado (Fase 2) |
 | expo-splash-screen / expo-system-ui | ~58.0.13 / ~58.0.7 | Sí | Instalado (Fase 2) |
 | @react-native-async-storage/async-storage | 2.2.0 | Sí | Instalado (Fase 2): preferencia de tema |
-| @supabase/supabase-js | 2.119.0 (JS) | Sí | Fase 3 |
-| expo-secure-store | ~58.0.2 | Sí | Fase 3 |
+| @supabase/supabase-js | 2.119.0 (JS) | Sí | Instalado (Fase 3) |
+| expo-secure-store | ~58.0.2 | Sí | Instalado (Fase 3): sesión en el llavero |
+| react-native-url-polyfill | 4.0.0 (JS) | Sí | Instalado (Fase 3): lo exige la guía de Supabase |
 | expo-local-authentication | ~58.0.2 | Sin Face ID | Fase 3 / 11 |
 | react-hook-form | 7.91.0 (JS) | Sí | Fase 5 |
-| zod | 4.6.7 (JS) | Sí | Fase 5 |
-| jest-expo | ~58.0.14 | — | Fase 5 |
+| zod | 4.6.7 (JS) | Sí | Instalado (Fase 3): validaciones |
+| jest-expo + jest 30 | ~58.0.14 | — | Instalado (Fase 3, desarrollo) |
+| @electric-sql/pglite | 0.5.16 | — | Instalado (Fase 3, desarrollo): pruebas SQL locales |
 | expo-notifications | ~58.1.8 | Sí | Fase 7 |
 | @shopify/react-native-skia | 2.14.0 | Sí | Solo si los gráficos SVG se quedan cortos |
 | expo-image-picker / expo-camera | ~58.0.10 / ~58.0.14 | Sí | Fase 10 |
@@ -176,7 +233,11 @@ Regla: instalar siempre con `npx expo install <paquete>`, que elige la versión 
 - `npx expo-doctor`: configuración y versiones.
 - `npm run bundle:ios`: compila el bundle real de iOS (Hermes) para detectar errores
   que el editor no ve.
-- Pruebas automáticas con jest-expo desde la Fase 5, cuando exista lógica de dinero.
+- `npm test`: 51 pruebas unitarias (validaciones, sesión en el llavero, flujos de auth,
+  protección de rutas, reglas contables).
+- `npm run test:db`: migraciones + 52 comprobaciones de RLS e integridad en PostgreSQL
+  local (PGlite). Se verificó que detectan fallos rompiendo políticas a propósito.
+- `npm run test:db:remote` y `npm run test:integration`: lo mismo contra el proyecto real.
 - Reanimated 4: los valores animados se cambian con `.set()` (no `x.value = …`); las
   reglas del compilador de React en ESLint lo exigen.
 

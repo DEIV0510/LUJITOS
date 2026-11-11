@@ -21,7 +21,7 @@ type ScreenHeaderProps = {
 export function ScreenHeader({ title, right, leading = 'back', onLeadingPress, modal }: ScreenHeaderProps) {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const goBack = onLeadingPress ?? (() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/index')));
+  const goBack = onLeadingPress ?? (() => (router.canGoBack() ? router.back() : router.replace('/')));
 
   return (
     <View

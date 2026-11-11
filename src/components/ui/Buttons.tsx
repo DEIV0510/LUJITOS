@@ -1,7 +1,7 @@
 import { ActivityIndicator, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { haptics } from '@/lib/haptics';
-import { useAppTheme } from '@/theme';
+import { palette, useAppTheme } from '@/theme';
 import type { IconName } from '@/types/finance';
 
 import { AppText } from './AppText';
@@ -17,11 +17,15 @@ type ButtonProps = {
   size?: 'regular' | 'large';
   style?: StyleProp<ViewStyle>;
   accessibilityHint?: string;
+  /** 'inverse' para fondos verde bosque (bienvenida). */
+  tone?: 'default' | 'inverse';
 };
 
 /** Acción principal de cada pantalla. */
-export function PrimaryButton({ label, onPress, icon, disabled, loading, size = 'regular', style, accessibilityHint }: ButtonProps) {
+export function PrimaryButton({ label, onPress, icon, disabled, loading, size = 'regular', style, accessibilityHint, tone = 'default' }: ButtonProps) {
   const { colors, radius, spacing } = useAppTheme();
+  const background = tone === 'inverse' ? palette.ivory : colors.primary;
+  const foreground = tone === 'inverse' ? palette.forest : colors.onPrimary;
   return (
     <PressableScale
       accessibilityRole="button"
@@ -36,7 +40,7 @@ export function PrimaryButton({ label, onPress, icon, disabled, loading, size = 
       style={[
         styles.base,
         {
-          backgroundColor: colors.primary,
+          backgroundColor: background,
           borderRadius: radius.md,
           minHeight: size === 'large' ? 56 : 48,
           paddingHorizontal: spacing.xl,
@@ -45,11 +49,11 @@ export function PrimaryButton({ label, onPress, icon, disabled, loading, size = 
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={colors.onPrimary} />
+        <ActivityIndicator color={foreground} />
       ) : (
         <View style={styles.row}>
-          {icon ? <Icon name={icon} size={18} color={colors.onPrimary} weight="semibold" /> : null}
-          <AppText variant="button" color="onPrimary" numberOfLines={1}>
+          {icon ? <Icon name={icon} size={18} color={foreground} weight="semibold" /> : null}
+          <AppText variant="button" numberOfLines={1} style={{ color: foreground }}>
             {label}
           </AppText>
         </View>
@@ -59,8 +63,10 @@ export function PrimaryButton({ label, onPress, icon, disabled, loading, size = 
 }
 
 /** Acción secundaria: fondo suave, mismo tamaño táctil. */
-export function SecondaryButton({ label, onPress, icon, disabled, size = 'regular', style, accessibilityHint }: ButtonProps) {
+export function SecondaryButton({ label, onPress, icon, disabled, size = 'regular', style, accessibilityHint, tone = 'default' }: ButtonProps) {
   const { colors, radius, spacing } = useAppTheme();
+  const inverse = tone === 'inverse';
+  const foreground = inverse ? palette.ivory : colors.primary;
   return (
     <PressableScale
       accessibilityRole="button"
@@ -75,7 +81,9 @@ export function SecondaryButton({ label, onPress, icon, disabled, size = 'regula
       style={[
         styles.base,
         {
-          backgroundColor: colors.primarySoft,
+          backgroundColor: inverse ? 'transparent' : colors.primarySoft,
+          borderWidth: inverse ? 1 : 0,
+          borderColor: inverse ? 'rgba(244,241,232,0.45)' : 'transparent',
           borderRadius: radius.md,
           minHeight: size === 'large' ? 56 : 48,
           paddingHorizontal: spacing.lg,
@@ -84,8 +92,8 @@ export function SecondaryButton({ label, onPress, icon, disabled, size = 'regula
       ]}
     >
       <View style={styles.row}>
-        {icon ? <Icon name={icon} size={17} color={colors.primary} weight="semibold" /> : null}
-        <AppText variant="button" color="primary" numberOfLines={1}>
+        {icon ? <Icon name={icon} size={17} color={foreground} weight="semibold" /> : null}
+        <AppText variant="button" numberOfLines={1} style={{ color: foreground }}>
           {label}
         </AppText>
       </View>
