@@ -71,11 +71,12 @@ src/
   services/database/  Perfil, preferencias, cuentas, categorías y movimientos.
   lib/                money.ts, dates.ts, haptics.ts, supabase.ts, supabase-storage.ts.
   constants/          app.ts, categories.ts, institutions.ts.
-  types/              finance.ts (modelo de la app) y database.ts (tablas de Supabase).
+  types/              finance.ts (modelo de la app), database.ts (tablas, escrito a mano),
+                      database.generated.ts (desde la base real) y database.check.ts.
   utils/              color.ts.
   theme/              Sistema de diseño.
 assets/images/        icon.png (1024, sin transparencia) y splash-icon.png.
-supabase/             config.toml (auth), migrations/ (4 migraciones), tests/ (RLS).
+supabase/             config.toml (auth), migrations/ (5 migraciones), tests/ (RLS).
 scripts/              Pruebas de base local e integración, usuarios de prueba.
 tests/unit/           Pruebas unitarias (jest-expo).
 docs/                 ARQUITECTURA.md, DISENO.md.
@@ -173,7 +174,10 @@ Pendientes para sus fases: `budgets`, `budget_categories`, `savings_goals`, `deb
 | transactions | propios | propios (cuentas y categorías válidas) | propios | no: borrado lógico |
 | account_snapshots | propios | propios | no | no |
 
-El rol anónimo no tiene ningún permiso sobre estas tablas. Validaciones del lado de la
+El rol anónimo no tiene ningún permiso sobre estas tablas. Los permisos se conceden de
+forma explícita en la migración de RLS (primero `revoke all`, luego solo lo necesario a
+`authenticated`), así que no dependen de «Automatically expose new tables»: el proyecto se
+creó con esa opción apagada y `npm run test:db` prueba ambos casos. Validaciones del lado de la
 base: montos positivos, forma de transferencias (origen ≠ destino, sin categoría),
 categoría obligatoria y del tipo correcto en ingresos/gastos, sin movimientos nuevos en
 cuentas archivadas, dueño inmutable.
@@ -229,15 +233,21 @@ Regla: instalar siempre con `npx expo install <paquete>`, que elige la versión 
 
 ## 9. Calidad
 
-- `npm run check`: TypeScript + ESLint. Debe quedar en cero antes de cada entrega.
+- `npm run check`: TypeScript + ESLint + unitarias + SQL local. Debe quedar en cero antes
+  de cada entrega. El TypeScript incluye `src/types/database.check.ts`, que compara los
+  tipos escritos a mano con los generados desde la base real (`npm run db:types`).
 - `npx expo-doctor`: configuración y versiones.
 - `npm run bundle:ios`: compila el bundle real de iOS (Hermes) para detectar errores
   que el editor no ve.
 - `npm test`: 51 pruebas unitarias (validaciones, sesión en el llavero, flujos de auth,
   protección de rutas, reglas contables).
 - `npm run test:db`: migraciones + 52 comprobaciones de RLS e integridad en PostgreSQL
-  local (PGlite). Se verificó que detectan fallos rompiendo políticas a propósito.
-- `npm run test:db:remote` y `npm run test:integration`: lo mismo contra el proyecto real.
+  local (PGlite), con y sin permisos automáticos. Se verificó que detectan fallos rompiendo
+  políticas a propósito.
+- `npm run test:db:remote` (52 comprobaciones) y `npm run test:integration` (17 pruebas por
+  la API): lo mismo contra el proyecto real. Ambas pasaron el 2026-11-11.
+- `npm run db:advisors`: avisos de Supabase. Solo queda «Leaked Password Protection», que
+  exige plan Pro.
 - Reanimated 4: los valores animados se cambian con `.set()` (no `x.value = …`); las
   reglas del compilador de React en ESLint lo exigen.
 

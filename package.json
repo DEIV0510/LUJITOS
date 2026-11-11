@@ -17,8 +17,9 @@
     "test:integration": "node scripts/test-integration.mjs",
     "test:users": "node scripts/create-test-users.mjs",
     "test:users:clean": "npx --yes supabase@3.1.0 db query --remote --yes -f supabase/tests/cleanup_test_users.sql",
-    "db:push": "npx --yes supabase@3.1.0 db push",
-    "db:types": "npx --yes supabase@3.1.0 gen types typescript --linked > src/types/database.generated.ts"
+    "db:push": "npx --yes supabase@3.1.0 db push --remote",
+    "db:types": "npx --yes supabase@3.1.0 gen types --lang=typescript --schema public --remote > src/types/database.generated.ts",
+    "db:advisors": "npx --yes supabase@3.1.0 db advisors --remote"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

@@ -3,15 +3,30 @@
 Guía para conectar la app con su base de datos. Todo se hace con **tu** cuenta de
 Supabase (organización «DeiV»). Nunca se usa la clave secreta `service_role` en la app.
 
-## 1. Crear el proyecto
+## Proyecto actual
+
+| Dato | Valor |
+| --- | --- |
+| Organización | DeiV (plan gratuito) |
+| Proyecto | `lujitos` · ref `pntkbflfolpkcvcqwagr` · East US (North Virginia) |
+| URL | `https://pntkbflfolpkcvcqwagr.supabase.co` |
+| Creado | 2026-11-11, con Data API activa, **sin** «Automatically expose new tables» y **con** «Enable automatic RLS» |
+
+La contraseña de la base de datos la generó Supabase y no está guardada en ningún lado:
+no hace falta (la CLI entra con tu sesión). Si algún día la necesitas, cámbiala en
+**Project Settings → Database → Reset database password**.
+
+## 1. Crear el proyecto (solo si hubiera que rehacerlo)
 
 1. Entra a [supabase.com/dashboard](https://supabase.com/dashboard) → organización **DeiV**.
 2. **New project**.
 3. **Project name:** `lujitos`.
-4. **Database password:** pulsa **Generate a password** y guárdala en tu gestor de
-   contraseñas. No la pegues en ningún chat ni archivo del proyecto.
+4. **Database password:** pulsa **Generate a password**. No la pegues en ningún chat ni
+   archivo del proyecto.
 5. **Region:** East US (North Virginia).
-6. **Create new project** y espera a que diga *Healthy* (1–2 minutos).
+6. **Security:** deja **Enable Data API** activo, **desmarca** «Automatically expose new
+   tables» (las migraciones conceden los permisos exactos) y **marca** «Enable automatic RLS».
+7. **Create new project** y espera a que diga *Healthy* (1–2 minutos).
 
 Plan gratuito: el proyecto se pausa tras 7 días sin uso; se reactiva desde el panel.
 
@@ -33,18 +48,18 @@ En la terminal de VS Code, dentro de la carpeta del proyecto:
 ```bash
 npx --yes supabase@3.1.0 login
 ```
-Se abre el navegador; autoriza con tu cuenta. (En Windows, si falla al abrir el navegador,
-copia el enlace que imprime.)
+Pulsa Enter, autoriza en el navegador con la cuenta **DeiV** y escribe en la terminal el
+código que muestra la página. (En PowerShell usa `npx.cmd` si `npx` da error de scripts.)
 
 ```bash
-npx --yes supabase@3.1.0 link --project-ref TU_REF
+npx --yes supabase@3.1.0 link --project-ref pntkbflfolpkcvcqwagr
 ```
-`TU_REF` es la parte de la URL entre `https://` y `.supabase.co`. Te pedirá la contraseña
-de la base de datos: escríbela tú en la terminal.
+No pide la contraseña de la base: la CLI 3 crea un rol temporal con tu sesión.
 
 ```bash
 npm run db:push
 ```
+La CLI 3 apunta a una base local si no se le pasa `--remote`; el script ya lo incluye.
 Aplica en orden los archivos de `supabase/migrations/`:
 
 | Migración | Contenido |
@@ -53,6 +68,11 @@ Aplica en orden los archivos de `supabase/migrations/`:
 | `20261111120100_row_level_security.sql` | RLS y permisos por columna |
 | `20261111120200_auth_and_integrity_triggers.sql` | Perfil automático y validaciones |
 | `20261111120300_default_categories.sql` | 23 categorías del sistema |
+| `20261111120400_lock_rls_auto_enable.sql` | Quita a `anon`/`authenticated` el permiso de llamar `rls_auto_enable()`, la función que crea «Enable automatic RLS» |
+
+Después de una migración nueva: `npm run db:types` regenera
+`src/types/database.generated.ts` y `npm run typecheck` avisa si `src/types/database.ts`
+quedó desalineado (`src/types/database.check.ts`).
 
 ## 4. Autenticación por correo y enlaces de recuperación
 
@@ -64,12 +84,15 @@ La configuración está versionada en `supabase/config.toml` (sección `[auth]`)
   (Expo Go usa direcciones `exp://` que cambian en cada arranque del túnel).
 - Un correo de confirmación o recuperación cada 60 segundos como máximo.
 
-Para aplicarla al proyecto:
+Ya está aplicada (2026-11-11). Si cambias `config.toml`, revisa primero y luego aplica:
 
 ```bash
+npx --yes supabase@3.1.0 config diff
 npx --yes supabase@3.1.0 config push
 ```
-Muestra las diferencias y pide confirmación. Equivalente manual en el panel:
+`config.toml` está alineado con el proyecto en todo lo demás (pooler, OTP de 8 dígitos,
+MFA TOTP, almacenamiento vectorial apagado), así que `config diff` debe mostrar solo lo que
+cambiaste. Equivalente manual en el panel:
 **Authentication → URL Configuration** (Site URL y Redirect URLs) y
 **Authentication → Providers → Email** / **Sign In / Providers** (confirmación y contraseñas).
 
@@ -103,7 +126,8 @@ sus datos: `npm run test:users:clean`.
 ## 7. Comprobar que tus datos están protegidos
 
 - En el panel: **Database → Tables**: las 6 tablas muestran **RLS enabled**.
-- **Advisors → Security Advisor**: no debe haber alertas de RLS.
+- `npm run db:advisors` (o **Advisors → Security Advisor**): la única alerta es
+  «Leaked Password Protection Disabled», que solo se puede activar en el plan Pro.
 - `npm run test:db:remote` termina con «TODAS LAS PRUEBAS DE SEGURIDAD PASARON».
 - Prueba manual: crea dos cuentas de LUJITOS con dos correos distintos; lo que registres
   en una no aparece en la otra.

@@ -29,6 +29,8 @@ movimientos guardados de verdad. La demostración sigue disponible en Configurac
 | `npm run test:db:remote` | Seguridad RLS en el proyecto real. |
 | `npm run test:integration` | Auth y aislamiento entre usuarios por la API real. |
 | `npm run db:push` | Aplica las migraciones al proyecto vinculado. |
+| `npm run db:types` | Regenera los tipos desde la base real (se comparan en `typecheck`). |
+| `npm run db:advisors` | Avisos de seguridad y rendimiento de Supabase. |
 | `npm run bundle:ios` | Compila el bundle de iOS para comprobar que no hay errores. |
 | `npx expo-doctor` | Revisa configuración y versiones. |
 

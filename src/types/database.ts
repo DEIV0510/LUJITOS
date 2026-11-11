@@ -1,8 +1,8 @@
 /**
  * Tipos de la base de datos de LUJITOS (esquema public).
- * Coinciden con supabase/migrations/. Cuando el proyecto esté vinculado se
- * pueden regenerar con:
- *   npx supabase gen types typescript --linked > src/types/database.ts
+ * Coinciden con supabase/migrations/. Tras una migración nueva:
+ *   npm run db:types   (regenera database.generated.ts desde la base real)
+ *   npm run typecheck  (database.check.ts falla si este archivo quedó desalineado)
  * Montos BIGINT = pesos colombianos enteros.
  */
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];

@@ -13,9 +13,15 @@ alter table public.transactions enable row level security;
 alter table public.account_snapshots enable row level security;
 alter table public.user_preferences enable row level security;
 
--- Defensa adicional: el rol anónimo no toca ninguna tabla privada.
+-- Permisos explícitos: no se depende de «Automatically expose new tables».
+-- Primero se quita todo y luego se concede solo lo necesario a usuarios con sesión.
 revoke all on public.profiles, public.accounts, public.categories, public.transactions,
-  public.account_snapshots, public.user_preferences, public.account_balances from anon;
+  public.account_snapshots, public.user_preferences, public.account_balances from anon, authenticated;
+grant usage on schema public to authenticated;
+grant select on public.profiles, public.user_preferences, public.account_balances to authenticated;
+grant select, insert, update on public.accounts, public.transactions to authenticated;
+grant select, insert, update, delete on public.categories to authenticated;
+grant select, insert on public.account_snapshots to authenticated;
 
 -- ---------- PROFILES ----------
 -- Se crean solo con el trigger de registro: sin INSERT ni DELETE para el cliente.
