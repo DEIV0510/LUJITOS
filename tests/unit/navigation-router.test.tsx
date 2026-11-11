@@ -46,7 +46,10 @@ const page = (label: string) =>
 function appRoutes(session: Session) {
   function RootLayout() {
     const state = useSyncExternalStore(session.subscribe, session.get);
-    return <AppNavigator guards={navigationGuards(state)} background="#000000" />;
+    const guards = navigationGuards(state);
+    // Como src/app/_layout.tsx: mientras se comprueba la sesión no hay navegador.
+    if (guards.loading) return null;
+    return <AppNavigator guards={guards} background="#000000" />;
   }
   return {
     _layout: RootLayout,
@@ -127,6 +130,23 @@ describe('apertura de la app según la sesión (router real)', () => {
 });
 
 describe('cambios de sesión con la app abierta (router real)', () => {
+  // Así arranca la app en el iPhone: primero comprueba la sesión (sin navegador)
+  // y luego monta las rutas con la dirección del enlace de Expo Go («/»).
+  const loading: State = { status: 'loading', onboarded: false, recovery: false };
+  it.each([
+    ['sin sesión', signedOut, 'Bienvenida', '/welcome'],
+    ['usuario nuevo', newUser, 'Onboarding', '/onboarding'],
+    ['con sesión', member, 'Inicio', '/'],
+  ] as const)('arranque real: comprobando sesión → %s', async (_label, state, text, pathname) => {
+    const session = createSession(loading);
+    const router = await renderRouter(appRoutes(session), { initialUrl: '/' });
+    expect(screen.queryByText('Unmatched Route')).toBeNull();
+    await act(async () => session.set(state));
+    expect(await screen.findByText(text)).toBeTruthy();
+    expect(router.getPathname()).toBe(pathname);
+    expect(screen.queryByText('Unmatched Route')).toBeNull();
+  });
+
   it('registro → onboarding → inicio → cerrar sesión', async () => {
     const session = createSession(signedOut);
     const router = await renderRouter(appRoutes(session), { initialUrl: '/' });
