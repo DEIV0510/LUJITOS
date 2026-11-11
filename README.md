@@ -38,7 +38,10 @@ Si no conecta:
 
 - Revisar que la red Wi-Fi del PC esté como **Privada** (Configuración de Windows →
   Red e Internet → Wi-Fi → la red → Tipo de perfil de red → Privada).
-- O usar `npm run start:tunnel`. La primera vez pide instalar `@expo/ngrok`: responder `Y`.
+- O usar `npm run start:tunnel` (túnel ngrok, ya incluido en el proyecto). Funciona en
+  cualquier red, incluso con datos móviles, sin cuenta de Expo. Cerrarlo con Ctrl+C al terminar.
+- Si el PC tiene Radmin VPN u otra VPN, Expo puede poner en el QR la IP equivocada. En
+  PowerShell: `$env:REACT_NATIVE_PACKAGER_HOSTNAME = '<IP del Wi-Fi>'; npm.cmd start`.
 
 ## Documentación
 
