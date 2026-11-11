@@ -133,25 +133,23 @@ export function Checkbox({ checked, onChange, children, error }: CheckboxProps) 
   );
 }
 
-/** Mensaje de error general de un formulario. */
-export function FormMessage({ message, tone = 'error' }: { message: string | null; tone?: 'error' | 'success' }) {
+/** Mensaje general de un formulario: error, éxito o aviso neutro (p. ej. «Tu sesión terminó»). */
+export function FormMessage({ message, tone = 'error' }: { message: string | null; tone?: 'error' | 'success' | 'info' }) {
   const { colors, radius } = useAppTheme();
   if (!message) return null;
-  const isError = tone === 'error';
+  const look = {
+    error: { background: colors.negativeSoft, icon: 'exclamationmark.triangle.fill', color: 'negative' },
+    success: { background: colors.positiveSoft, icon: 'checkmark.circle.fill', color: 'positive' },
+    info: { background: colors.surfaceMuted, icon: 'info.circle.fill', color: 'textSecondary' },
+  } as const;
+  const { background, icon, color } = look[tone];
   return (
     <View
-      accessibilityLiveRegion="assertive"
-      style={[
-        styles.message,
-        { backgroundColor: isError ? colors.negativeSoft : colors.positiveSoft, borderRadius: radius.sm },
-      ]}
+      accessibilityLiveRegion={tone === 'info' ? 'polite' : 'assertive'}
+      style={[styles.message, { backgroundColor: background, borderRadius: radius.sm }]}
     >
-      <Icon
-        name={isError ? 'exclamationmark.triangle.fill' : 'checkmark.circle.fill'}
-        size={15}
-        color={isError ? colors.negative : colors.positive}
-      />
-      <AppText variant="footnote" color={isError ? 'negative' : 'positive'} style={styles.flex}>
+      <Icon name={icon} size={15} color={colors[color]} />
+      <AppText variant="footnote" color={color} style={styles.flex}>
         {message}
       </AppText>
     </View>

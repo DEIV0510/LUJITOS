@@ -110,6 +110,18 @@ export type AccountBalanceRow = {
   last_transaction_date: string | null;
 };
 
+/** Auditoría: solo lectura desde la app. Sin montos, textos, contraseñas ni tokens. */
+export type AuditLogRow = {
+  id: number;
+  user_id: string;
+  /** p. ej. 'auth.signed_in', 'account.archived', 'transaction.deleted'. */
+  action: string;
+  entity_id: string | null;
+  /** Nombres de los campos que cambiaron (nunca sus valores). */
+  changed_fields: string[];
+  created_at: string;
+};
+
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 export type Database = {
@@ -182,6 +194,13 @@ export type Database = {
         Row: UserPreferencesRow;
         Insert: Optional<UserPreferencesRow, Exclude<keyof UserPreferencesRow, 'user_id'>>;
         Update: Partial<UserPreferencesRow>;
+        Relationships: [];
+      };
+      // La escriben triggers de la base; RLS y permisos impiden insertar desde la app.
+      audit_logs: {
+        Row: AuditLogRow;
+        Insert: never;
+        Update: never;
         Relationships: [];
       };
     };

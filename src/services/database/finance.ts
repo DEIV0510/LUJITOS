@@ -10,7 +10,7 @@ import { tones, type Tone } from '@/theme';
 import type { Account, Category, IconName, InstitutionId, RegistrationMethod, Transaction } from '@/types/finance';
 import type { AccountRow, CategoryRow, ConnectionTypeDb, TransactionRow } from '@/types/database';
 
-import { dbErrorMessage } from './errors';
+import { dbFailure } from './errors';
 
 const METHOD: Record<ConnectionTypeDb, RegistrationMethod> = {
   manual: 'manual',
@@ -79,8 +79,8 @@ export async function fetchAccounts(): Promise<Account[]> {
     supabase.from('accounts').select('*').order('created_at', { ascending: true }),
     supabase.from('account_balances').select('account_id, balance'),
   ]);
-  if (accounts.error) throw new Error(dbErrorMessage(accounts.error));
-  if (balances.error) throw new Error(dbErrorMessage(balances.error));
+  if (accounts.error) throw dbFailure('finance.fetchAccounts', accounts.error);
+  if (balances.error) throw dbFailure('finance.fetchAccounts', balances.error);
   const byId = new Map(balances.data.map((row) => [row.account_id, fromDb(row.balance)]));
   return accounts.data.map((row) => mapAccount(row, byId.get(row.id)));
 }
@@ -91,7 +91,7 @@ export async function fetchCategories(): Promise<Category[]> {
     .select('*')
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: true });
-  if (error) throw new Error(dbErrorMessage(error));
+  if (error) throw dbFailure('finance.fetchCategories', error);
   return data.map(mapCategory);
 }
 
@@ -104,7 +104,7 @@ export async function fetchTransactions(limit = 500): Promise<Transaction[]> {
     .order('transaction_date', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(limit);
-  if (error) throw new Error(dbErrorMessage(error));
+  if (error) throw dbFailure('finance.fetchTransactions', error);
   return data.map(mapTransaction);
 }
 
@@ -129,12 +129,12 @@ export async function createAccount(input: NewAccountInput): Promise<void> {
     credit_limit: input.kind === 'credit_card' ? (input.creditLimit ?? null) : null,
     connection_type: 'manual',
   });
-  if (error) throw new Error(dbErrorMessage(error));
+  if (error) throw dbFailure('finance.createAccount', error);
 }
 
 export async function archiveAccount(accountId: string): Promise<void> {
   const { error } = await supabase.from('accounts').update({ is_active: false }).eq('id', accountId);
-  if (error) throw new Error(dbErrorMessage(error));
+  if (error) throw dbFailure('finance.archiveAccount', error);
 }
 
 export type NewTransactionInput = {
@@ -161,7 +161,7 @@ export async function createTransaction(input: NewTransactionInput): Promise<voi
     transaction_date: input.date,
     source: 'manual',
   });
-  if (error) throw new Error(dbErrorMessage(error));
+  if (error) throw dbFailure('finance.createTransaction', error);
 }
 
 /** Borrado lógico: el movimiento deja de contar, pero queda el registro. */
@@ -170,5 +170,5 @@ export async function deleteTransaction(transactionId: string): Promise<void> {
     .from('transactions')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', transactionId);
-  if (error) throw new Error(dbErrorMessage(error));
+  if (error) throw dbFailure('finance.deleteTransaction', error);
 }

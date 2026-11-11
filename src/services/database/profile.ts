@@ -1,13 +1,13 @@
 import { supabase } from '@/lib/supabase';
 import type { ProfileRow, UserPreferencesRow } from '@/types/database';
 
-import { dbErrorMessage } from './errors';
+import { dbFailure } from './errors';
 
 export type Profile = ProfileRow;
 
 export async function fetchProfile(userId: string): Promise<Profile> {
   const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-  if (error) throw new Error(dbErrorMessage(error));
+  if (error) throw dbFailure('profile.fetchProfile', error);
   return data;
 }
 
@@ -20,7 +20,7 @@ type ProfilePatch = Partial<
 
 export async function updateProfile(userId: string, patch: ProfilePatch): Promise<Profile> {
   const { data, error } = await supabase.from('profiles').update(patch).eq('id', userId).select('*').single();
-  if (error) throw new Error(dbErrorMessage(error));
+  if (error) throw dbFailure('profile.updateProfile', error);
   return data;
 }
 
@@ -40,7 +40,7 @@ export async function completeOnboarding(
 
 export async function fetchPreferences(userId: string): Promise<UserPreferencesRow | null> {
   const { data, error } = await supabase.from('user_preferences').select('*').eq('user_id', userId).maybeSingle();
-  if (error) throw new Error(dbErrorMessage(error));
+  if (error) throw dbFailure('profile.fetchPreferences', error);
   return data;
 }
 
@@ -49,5 +49,5 @@ export async function updatePreferences(
   patch: Partial<Pick<UserPreferencesRow, 'theme' | 'notifications_enabled' | 'biometric_enabled' | 'hide_amounts'>>,
 ): Promise<void> {
   const { error } = await supabase.from('user_preferences').update(patch).eq('user_id', userId);
-  if (error) throw new Error(dbErrorMessage(error));
+  if (error) throw dbFailure('profile.updatePreferences', error);
 }

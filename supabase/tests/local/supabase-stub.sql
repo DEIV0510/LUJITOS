@@ -19,6 +19,7 @@ create table auth.users (
   email varchar(255),
   encrypted_password varchar(255),
   email_confirmed_at timestamptz,
+  last_sign_in_at timestamptz,
   raw_user_meta_data jsonb default '{}'::jsonb,
   created_at timestamptz default now(),
   updated_at timestamptz default now()

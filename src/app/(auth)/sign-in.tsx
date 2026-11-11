@@ -7,12 +7,14 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/Buttons';
 import { InputField } from '@/components/ui/InputField';
 import { AuthLayout, FormMessage } from '@/features/auth/components';
 import { fieldErrors, signInSchema } from '@/features/auth/validation';
+import { useAuth } from '@/hooks/auth';
 import { haptics } from '@/lib/haptics';
 import { resendConfirmation, signIn } from '@/services/auth/authService';
 import { useAppTheme } from '@/theme';
 
 export default function SignInScreen() {
   const { colors } = useAppTheme();
+  const { notice } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
@@ -65,7 +67,8 @@ export default function SignInScreen() {
         </AppText>
       }
     >
-      <FormMessage message={message?.text ?? null} tone={message?.tone} />
+      {/* Si la sesión anterior venció, se explica aquí hasta que haya otro mensaje. */}
+      <FormMessage message={message?.text ?? notice} tone={message ? message.tone : 'info'} />
       {unconfirmed ? <SecondaryButton label="Reenviar correo de confirmación" icon="envelope.fill" onPress={resend} /> : null}
       <InputField
         label="Correo electrónico"

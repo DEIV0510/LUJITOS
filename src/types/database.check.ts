@@ -31,6 +31,7 @@ export type DatabaseTypesMatch = [
   Expect<Equal<Flat<Tables['transactions']['Row']>, Flat<Hand.TransactionRow>>>,
   Expect<Equal<Flat<Tables['account_snapshots']['Row']>, Flat<Hand.AccountSnapshotRow>>>,
   Expect<Equal<Flat<Tables['user_preferences']['Row']>, Flat<Hand.UserPreferencesRow>>>,
+  Expect<Equal<Flat<Tables['audit_logs']['Row']>, Flat<Hand.AuditLogRow>>>,
   Expect<Equal<BalanceViewReal, Flat<Hand.AccountBalanceRow>>>,
   Expect<Equal<Enums['account_type'], Hand.AccountTypeDb>>,
   Expect<Equal<Enums['connection_type'], Hand.ConnectionTypeDb>>,

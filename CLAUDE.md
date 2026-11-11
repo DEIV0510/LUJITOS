@@ -13,6 +13,10 @@
 - Base de datos: todo cambio va en una migración nueva en `supabase/migrations/` con RLS, y
   `npm run test:db` debe pasar. Pantallas privadas nuevas van dentro de `src/app/(app)/`.
 - Sesión: solo en SecureStore (`src/lib/supabase-storage.ts`); nunca imprimir tokens.
+- Errores técnicos: solo con `logError()` (`src/lib/logger.ts`) o `dbFailure()`; nunca
+  `console.log` de datos. Al usuario, siempre el mensaje en español de `authErrors`/`errors`.
+- Auditoría: `audit_logs` la escriben triggers. Una tabla financiera nueva lleva su trigger
+  `audit_row_change` y nunca guarda montos ni textos en la auditoría.
 - Dinero: PESOS ENTEROS en la app y BIGINT en la base. Formato y lectura solo con
   `src/lib/money.ts`. Transferencias, ajustes y pagos de tarjeta no son ingreso ni gasto.
 - Diseño: colores, tipografía, espacios y sombras solo desde `src/theme` (`useAppTheme()`);

@@ -1,5 +1,13 @@
 /** Traduce errores de PostgreSQL/PostgREST a mensajes en español sin detalles internos. */
+import { logError } from '@/lib/logger';
+
 type DbLikeError = { code?: string; message?: string } | null | undefined;
+
+/** Registra el error técnico (sin datos sensibles) y devuelve el mensaje para el usuario. */
+export function dbFailure(context: string, error: DbLikeError): Error {
+  logError(context, error);
+  return new Error(dbErrorMessage(error));
+}
 
 export function dbErrorMessage(error: DbLikeError): string {
   if (!error) return 'Ocurrió un error inesperado.';

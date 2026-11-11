@@ -62,6 +62,19 @@ describe('Registro', () => {
     const result = await signUp({ firstName: 'A', lastName: 'B', email: 'a@b.co', password: 'Lujitos2026' });
     expect(result).toEqual({ ok: false, message: expect.stringMatching(/Ya existe una cuenta/) });
   });
+
+  it('detecta el correo ya registrado aunque Supabase no dé error (usuario sin identidades)', async () => {
+    // Comportamiento real comprobado en scripts/test-integration.mjs.
+    mockAuth.signUp.mockResolvedValue({ data: { session: null, user: { id: 'falso', identities: [] } }, error: null });
+    const result = await signUp({ firstName: 'A', lastName: 'B', email: 'ya@existe.co', password: 'Lujitos2026' });
+    expect(result).toEqual({ ok: false, message: expect.stringMatching(/Ya existe una cuenta/) });
+  });
+
+  it('un registro nuevo (con identidad) sí pide confirmar el correo', async () => {
+    mockAuth.signUp.mockResolvedValue({ data: { session: null, user: { id: 'u', identities: [{ id: 'i' }] } }, error: null });
+    const result = await signUp({ firstName: 'A', lastName: 'B', email: 'nuevo@ejemplo.co', password: 'Lujitos2026' });
+    expect(result).toEqual({ ok: true, data: { needsConfirmation: true } });
+  });
 });
 
 describe('Inicio y cierre de sesión', () => {
@@ -138,10 +151,21 @@ describe('Protección de rutas', () => {
     expect(navigationGuards({ status: 'loading', onboarded: true, recovery: false })).toEqual({
       loading: true,
       setup: false,
+      offline: false,
       app: false,
       onboarding: false,
       auth: false,
       home: '/welcome',
+    });
+  });
+
+  it('sin conexión con sesión guardada no se abre ninguna zona (ni la bienvenida)', () => {
+    expect(navigationGuards({ status: 'offline', onboarded: true, recovery: false })).toMatchObject({
+      offline: true,
+      loading: false,
+      app: false,
+      onboarding: false,
+      auth: false,
     });
   });
 

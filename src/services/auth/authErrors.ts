@@ -26,12 +26,20 @@ const BY_CODE: Record<string, string> = {
   signup_disabled: 'El registro está desactivado en este proyecto.',
 };
 
+export const SESSION_EXPIRED_MESSAGE = 'Tu sesión terminó. Inicia sesión de nuevo.';
+export const DUPLICATE_ACCOUNT_MESSAGE = BY_CODE.user_already_exists!;
+export const OFFLINE_MESSAGE = 'Sin conexión con el servidor. Revisa tu internet e inténtalo de nuevo.';
+
+/** Error de red (sin internet, servidor inalcanzable): la sesión guardada sigue siendo válida. */
+export function isNetworkAuthError(error: AuthLikeError): boolean {
+  if (!error) return false;
+  return error.name === 'AuthRetryableFetchError' || error.status === 0 || /network|fetch/i.test(error.message ?? '');
+}
+
 export function authErrorMessage(error: AuthLikeError): string {
   if (!error) return 'Ocurrió un error inesperado.';
   if (error.code && BY_CODE[error.code]) return BY_CODE[error.code]!;
-  if (error.name === 'AuthRetryableFetchError' || error.status === 0 || /network|fetch/i.test(error.message ?? '')) {
-    return 'Sin conexión con el servidor. Revisa tu internet e inténtalo de nuevo.';
-  }
+  if (isNetworkAuthError(error)) return OFFLINE_MESSAGE;
   if (error.status === 429) return BY_CODE.over_request_rate_limit!;
   return 'No pudimos completar la operación. Inténtalo de nuevo.';
 }

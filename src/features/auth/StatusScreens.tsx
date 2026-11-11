@@ -1,4 +1,4 @@
-/** Pantallas de estado fuera del flujo normal: configuración pendiente y perfil sin cargar. */
+/** Pantallas de estado fuera del flujo normal: configuración pendiente, sin conexión y perfil sin cargar. */
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -8,7 +8,7 @@ import { FinancialCard } from '@/components/ui/FinancialCard';
 import { useAuth } from '@/hooks/auth';
 import { useAppTheme } from '@/theme';
 
-import { AuthLayout } from './components';
+import { AuthLayout, FormMessage } from './components';
 
 /** Se muestra si faltan EXPO_PUBLIC_SUPABASE_URL o EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY. */
 export function SetupRequiredScreen() {
@@ -38,6 +38,39 @@ export function SetupRequiredScreen() {
       <AppText variant="footnote" color="textTertiary">
         Solo se usan datos públicos. La clave secreta (service_role) nunca va en la app.
       </AppText>
+    </AuthLayout>
+  );
+}
+
+/**
+ * Hay una sesión guardada pero no se pudo comprobar por falta de internet.
+ * No se borra ni se manda a la bienvenida: al volver la conexión se sigue.
+ */
+export function OfflineScreen() {
+  const { retrySession } = useAuth();
+  const { spacing } = useAppTheme();
+  const [retrying, setRetrying] = useState(false);
+  const [stillOffline, setStillOffline] = useState(false);
+  return (
+    <AuthLayout
+      title="Sin conexión"
+      subtitle="No pudimos comprobar tu sesión. Tus datos están a salvo: revisa tu internet e inténtalo de nuevo."
+    >
+      <View style={{ gap: spacing.md }}>
+        {stillOffline ? <FormMessage message="Todavía no hay conexión con el servidor." /> : null}
+        <PrimaryButton
+          label="Reintentar"
+          size="large"
+          loading={retrying}
+          onPress={async () => {
+            setRetrying(true);
+            await retrySession();
+            setRetrying(false);
+            // Si la conexión volvió, esta pantalla desaparece; si no, se avisa.
+            setStillOffline(true);
+          }}
+        />
+      </View>
     </AuthLayout>
   );
 }

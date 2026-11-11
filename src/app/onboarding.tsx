@@ -3,7 +3,7 @@
  * cómo se registran las cuentas y entrada al panel. No pide datos bancarios.
  */
 import { useState } from 'react';
-import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInRight } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,6 +23,9 @@ import { palette, screenPadding, useAppTheme } from '@/theme';
 import type { IconName } from '@/types/finance';
 
 const STEPS = 5;
+const LAST = STEPS - 1;
+/** Pasos no esenciales: bienvenida, país/moneda (ya vienen por defecto) y explicación. */
+const SKIPPABLE = new Set([0, 2, 3]);
 
 export default function OnboardingScreen() {
   const { colors, spacing } = useAppTheme();
@@ -45,11 +48,24 @@ export default function OnboardingScreen() {
       }
     }
     haptics.selection();
-    setStep((current) => Math.min(current + 1, STEPS - 1));
+    setStep((current) => Math.min(current + 1, LAST));
+  };
+
+  const skip = () => {
+    haptics.selection();
+    setStep(LAST);
   };
 
   const finish = async () => {
     if (!session) return;
+    // El nombre viene del registro; si faltara (o se omitió y no es válido), se pide.
+    const names = profileNamesSchema.safeParse({ firstName, lastName });
+    if (!names.success) {
+      setErrors(fieldErrors(names.error));
+      setStep(1);
+      haptics.error();
+      return;
+    }
     setSaving(true);
     setMessage(null);
     try {
@@ -83,13 +99,22 @@ export default function OnboardingScreen() {
             gap: spacing.xxl,
           }}
         >
-          <View style={styles.progress} accessibilityLabel={`Paso ${step + 1} de ${STEPS}`}>
-            {Array.from({ length: STEPS }, (_, index) => (
-              <View
-                key={index}
-                style={[styles.dot, { backgroundColor: index <= step ? colors.primary : colors.surfaceMuted, flex: index === step ? 2 : 1 }]}
-              />
-            ))}
+          <View style={styles.header}>
+            <View style={styles.progress} accessibilityLabel={`Paso ${step + 1} de ${STEPS}`}>
+              {Array.from({ length: STEPS }, (_, index) => (
+                <View
+                  key={index}
+                  style={[styles.dot, { backgroundColor: index <= step ? colors.primary : colors.surfaceMuted, flex: index === step ? 2 : 1 }]}
+                />
+              ))}
+            </View>
+            {SKIPPABLE.has(step) ? (
+              <Pressable onPress={skip} hitSlop={12} accessibilityRole="button" accessibilityHint="Salta al último paso">
+                <AppText variant="subhead" color="primary">
+                  Omitir
+                </AppText>
+              </Pressable>
+            ) : null}
           </View>
 
           <Animated.View key={step} entering={FadeInRight.duration(320)} style={[styles.body, { gap: spacing.lg }]}>
@@ -179,7 +204,7 @@ export default function OnboardingScreen() {
           </Animated.View>
 
           <View style={{ gap: spacing.md }}>
-            {step < STEPS - 1 ? (
+            {step < LAST ? (
               <PrimaryButton label={step === 0 ? 'Empezar' : 'Continuar'} size="large" onPress={next} />
             ) : (
               <PrimaryButton label="Entrar a LUJITOS" size="large" loading={saving} onPress={finish} />
@@ -213,7 +238,8 @@ function Point({ icon, title, text }: { icon: IconName; title: string; text: str
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  progress: { flexDirection: 'row', gap: 6 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 24 },
+  progress: { flex: 1, flexDirection: 'row', gap: 6 },
   dot: { height: 5, borderRadius: 3 },
   body: { flex: 1 },
   mark: { width: 76, height: 76, borderRadius: 22, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center' },

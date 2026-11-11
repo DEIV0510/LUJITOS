@@ -13,6 +13,8 @@ export type NavigationGuards = {
   auth: boolean;
   /** Pantalla de configuración pendiente de Supabase. */
   setup: boolean;
+  /** Sesión guardada que no se pudo comprobar por falta de red: pantalla «Sin conexión». */
+  offline: boolean;
   /**
    * Destino de toda zona cerrada. Debe ser una ruta concreta: si se deja al
    * router, elige el grupo «/(auth)», que no tiene pantalla índice, y muestra
@@ -39,6 +41,7 @@ export function navigationGuards(input: {
   return {
     loading: status === 'loading',
     setup: status === 'unconfigured',
+    offline: status === 'offline',
     app: signedIn && onboarded && !recovery,
     onboarding: signedIn && !onboarded && !recovery,
     auth: status === 'signedOut' && !recovery,

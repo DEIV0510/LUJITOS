@@ -76,7 +76,7 @@ src/
   utils/              color.ts.
   theme/              Sistema de diseño.
 assets/images/        icon.png (1024, sin transparencia) y splash-icon.png.
-supabase/             config.toml (auth), migrations/ (5 migraciones), tests/ (RLS).
+supabase/             config.toml (auth), migrations/ (6 migraciones), tests/ (RLS y auditoría).
 scripts/              Pruebas de base local e integración, usuarios de prueba.
 tests/unit/           Pruebas unitarias (jest-expo).
 docs/                 ARQUITECTURA.md, DISENO.md.
@@ -113,11 +113,21 @@ layout raíz usa `Stack.Protected` con `navigationGuards()` (`src/features/auth/
 | Estado | Zona accesible |
 | --- | --- |
 | Cargando sesión | Ninguna: se mantiene la apertura animada |
-| Sin sesión | `(auth)` |
+| Sin sesión | `(auth)` (con «Tu sesión terminó» si venció o se revocó sin que el usuario la cerrara) |
 | Con sesión, sin onboarding | `onboarding` |
 | Con sesión y onboarding | `(app)` |
 | Recuperación de contraseña | Solo `reset-password` |
+| Sesión guardada sin internet | «Sin conexión» con «Reintentar»: la sesión no se borra |
 | Sin variables de Supabase | Guía de configuración |
+
+Mensajes en español para cada caso (`src/services/auth/authErrors.ts`,
+`src/services/database/errors.ts`): sin conexión, credenciales incorrectas, sesión
+vencida, error de base de datos, correo ya registrado (Supabase no da error en ese caso:
+se detecta por el usuario sin identidades), correo sin confirmar (con «Reenviar»), enlace
+vencido o abierto en otro dispositivo, límite de intentos y operación exitosa. Nunca se
+muestra el mensaje técnico. Los errores técnicos se registran con `logError()`
+(`src/lib/logger.ts`): contexto, tipo, código y mensaje sin correos, tokens, claves, IDs
+ni números de 4+ cifras; solo en desarrollo hasta la Fase 11.
 
 Barra inferior propia (no la nativa de iOS) porque necesita el botón flotante de
 «Agregar» y el indicador de la marca. Respeta el área segura inferior.
@@ -160,7 +170,8 @@ usuario no puede quedar ningún dato del anterior en memoria.
 ## 6. Base de datos (Fase 3)
 
 Tablas creadas (todas con RLS): `profiles`, `accounts`, `categories`, `transactions`,
-`account_snapshots`, `user_preferences`, más la vista `account_balances` (security_invoker).
+`account_snapshots`, `user_preferences`, `audit_logs`, más la vista `account_balances`
+(security_invoker).
 Pendientes para sus fases: `budgets`, `budget_categories`, `savings_goals`, `debts`,
 `recurring_transactions`, `import_batches`, `institution_connections`, `transaction_rules`,
 `notifications`. Guía completa: [SUPABASE.md](SUPABASE.md).
@@ -173,6 +184,22 @@ Pendientes para sus fases: `budgets`, `budget_categories`, `savings_goals`, `deb
 | categories | sistema + propias | propias (nunca del sistema) | propias | propias sin movimientos |
 | transactions | propios | propios (cuentas y categorías válidas) | propios | no: borrado lógico |
 | account_snapshots | propios | propios | no | no |
+| audit_logs | propios | no: solo triggers | no | no |
+
+**Auditoría (`audit_logs`).** Triggers SECURITY DEFINER anotan registro, confirmación de
+correo, inicio de sesión, cambio de contraseña y de correo (desde `auth.users`); cuentas
+creadas, editadas, archivadas o reactivadas; movimientos creados, editados, borrados
+(lógico) o restaurados; categorías propias; perfil y preferencias. Solo guarda la acción,
+el UUID del registro y los **nombres** de los campos cambiados: nunca montos, textos,
+nombres, correos, contraseñas ni tokens. Lo rechazado no se anota (se deshace con la
+operación). Si falla la anotación de un evento de Auth, el acceso no se bloquea. Se borra en
+cascada con el usuario.
+
+**Por qué no hay DELETE en datos financieros.** El brief pide integridad histórica y no
+borrar movimientos de forma irreversible sin una estrategia explícita. La estrategia es:
+cuentas archivadas (`is_active = false`, `archived_at`) y movimientos con borrado lógico
+(`deleted_at`), ambos reversibles y auditados. El borrado definitivo solo ocurre al
+eliminar el usuario (derecho de supresión, en cascada).
 
 El rol anónimo no tiene ningún permiso sobre estas tablas. Los permisos se conceden de
 forma explícita en la migración de RLS (primero `revoke all`, luego solo lo necesario a
@@ -240,8 +267,9 @@ Regla: instalar siempre con `npx expo install <paquete>`, que elige la versión 
 - `npx expo-doctor`: configuración y versiones.
 - `npm run bundle:ios`: compila el bundle real de iOS (Hermes) para detectar errores
   que el editor no ve.
-- `npm test`: 75 pruebas unitarias (validaciones, sesión en el llavero, flujos de auth,
-  protección de rutas, reglas contables). `tests/unit/navigation-router.test.tsx` abre la
+- `npm test`: 93 pruebas unitarias (validaciones, sesión en el llavero, flujos de auth,
+  estados de sesión de `AuthProvider`, registro de errores, onboarding, protección de
+  rutas, reglas contables). `tests/unit/navigation-router.test.tsx` abre la
   app con el router real (`expo-router/testing-library`) en cada estado de sesión y
   dirección: así se detectó y corrigió «Unmatched Route» al abrir sin sesión.
 - Rutas protegidas: cada `Stack.Protected` lleva `redirectTo` a la pantalla del estado
@@ -249,11 +277,12 @@ Regla: instalar siempre con `npx expo install <paquete>`, que elige la versión 
   no tiene índice, y muestra «Unmatched Route». Los grupos usan `unstable_settings.anchor`
   (`initialRouteName` está obsoleto en Expo Router 58) y las pestañas solo muestran las
   pantallas declaradas con `Tabs.Screen`.
-- `npm run test:db`: migraciones + 52 comprobaciones de RLS e integridad en PostgreSQL
-  local (PGlite), con y sin permisos automáticos. Se verificó que detectan fallos rompiendo
-  políticas a propósito.
-- `npm run test:db:remote` (52 comprobaciones) y `npm run test:integration` (17 pruebas por
-  la API): lo mismo contra el proyecto real. Ambas pasaron el 2026-11-11.
+- `npm run test:db`: migraciones + 66 comprobaciones de RLS, integridad y auditoría en
+  PostgreSQL local (PGlite), con y sin permisos automáticos. Se verificó que detectan
+  fallos rompiendo políticas a propósito.
+- `npm run test:db:remote` (66 comprobaciones) y `npm run test:integration` (21 pruebas por
+  la API, incluidos auditoría y registro duplicado): lo mismo contra el proyecto real.
+  Ambas pasaron el 2026-11-11.
 - `npm run db:advisors`: avisos de Supabase. Solo queda «Leaked Password Protection», que
   exige plan Pro.
 - Reanimated 4: los valores animados se cambian con `.set()` (no `x.value = …`); las

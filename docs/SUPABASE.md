@@ -69,6 +69,7 @@ Aplica en orden los archivos de `supabase/migrations/`:
 | `20261111120200_auth_and_integrity_triggers.sql` | Perfil automático y validaciones |
 | `20261111120300_default_categories.sql` | 23 categorías del sistema |
 | `20261111120400_lock_rls_auto_enable.sql` | Quita a `anon`/`authenticated` el permiso de llamar `rls_auto_enable()`, la función que crea «Enable automatic RLS» |
+| `20261111120500_audit_logs.sql` | Tabla `audit_logs` y triggers de auditoría (Auth, cuentas, movimientos, categorías, perfil, preferencias). Solo lectura de los propios |
 
 Después de una migración nueva: `npm run db:types` regenera
 `src/types/database.generated.ts` y `npm run typecheck` avisa si `src/types/database.ts`
@@ -119,9 +120,9 @@ sus datos: `npm run test:users:clean`.
 | Comando | Qué prueba | Necesita |
 | --- | --- | --- |
 | `npm test` | 75 pruebas: validaciones, sesión en el llavero, flujos de auth, navegación con el router real según la sesión, reglas contables | Nada |
-| `npm run test:db` | Migraciones + 52 comprobaciones de RLS e integridad en PostgreSQL local (PGlite) | Nada |
-| `npm run test:db:remote` | Las mismas 52 comprobaciones en tu proyecto real (todo dentro de una transacción que se deshace) | Proyecto vinculado |
-| `npm run test:integration` | Por la API real: inicio y cierre de sesión, persistencia y renovación de sesión, perfil, aislamiento entre usuarios | `.env.local` + usuarios de prueba |
+| `npm run test:db` | Migraciones + 66 comprobaciones de RLS, integridad y auditoría en PostgreSQL local (PGlite), con y sin permisos automáticos | Nada |
+| `npm run test:db:remote` | Las mismas 66 comprobaciones en tu proyecto real (todo dentro de una transacción que se deshace) | Proyecto vinculado |
+| `npm run test:integration` | 21 pruebas por la API real: inicio y cierre de sesión, persistencia y renovación de sesión, registro duplicado, perfil, auditoría, aislamiento entre usuarios | `.env.local` + usuarios de prueba |
 
 ## 7. Comprobar que tus datos están protegidos
 

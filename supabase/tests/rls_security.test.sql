@@ -56,6 +56,19 @@ select lujitos_tests.check(
   and (select count(*) from public.categories where user_id is null and type = 'expense') = 15,
   'Existen 8 categorías de ingreso y 15 de gasto del sistema');
 
+-- Auditoría de Auth (estos cambios los hace el servicio de Auth de Supabase)
+select lujitos_tests.check(
+  (select count(*) from public.audit_logs where action = 'auth.signed_up'
+     and user_id in ('11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222')) = 2,
+  'Auditoría: cada registro queda anotado');
+update auth.users set email_confirmed_at = now(), last_sign_in_at = now() where id = '11111111-1111-4111-8111-111111111111';
+update auth.users set encrypted_password = 'hash-de-prueba' where id = '11111111-1111-4111-8111-111111111111';
+select lujitos_tests.check(
+  (select array_agg(action order by action) from public.audit_logs
+    where user_id = '11111111-1111-4111-8111-111111111111' and action like 'auth.%')
+    = array['auth.email_confirmed', 'auth.password_changed', 'auth.signed_in', 'auth.signed_up'],
+  'Auditoría: confirmación de correo, inicio de sesión y cambio de contraseña');
+
 -- ---------------------------------------------------------------------
 -- 2. Usuario A: sus datos y cálculo de saldos
 -- ---------------------------------------------------------------------
@@ -215,6 +228,53 @@ select lujitos_tests.check(
   'La cuenta archivada conserva su historial y su saldo');
 
 -- ---------------------------------------------------------------------
+-- 2b. Auditoría de las operaciones de A
+-- ---------------------------------------------------------------------
+select lujitos_tests.check(
+  (select count(*) from public.audit_logs where action = 'account.created') = 3,
+  'Auditoría: cada cuenta creada queda anotada');
+select lujitos_tests.check(
+  (select count(*) from public.audit_logs where action = 'transaction.created') = 6,
+  'Auditoría: cada movimiento guardado queda anotado (los rechazados no)');
+select lujitos_tests.check(
+  (select changed_fields = '{deleted_at}' and entity_id = 'aaaaaaaa-0000-4000-8000-0000000000e3'
+     from public.audit_logs where action = 'transaction.deleted'),
+  'Auditoría: el borrado lógico de un movimiento queda anotado');
+select lujitos_tests.check(
+  (select count(*) from public.audit_logs
+    where action = 'account.archived' and entity_id = 'aaaaaaaa-0000-4000-8000-000000000002') = 1,
+  'Auditoría: archivar una cuenta queda anotado');
+select lujitos_tests.check(
+  (select count(*) from public.audit_logs where action = 'category.created') = 1,
+  'Auditoría: crear una categoría propia queda anotado');
+select lujitos_tests.check(
+  (select changed_fields from public.audit_logs where action = 'profile.updated') = '{first_name}',
+  'Auditoría: guarda qué campos cambiaron, no sus valores');
+select lujitos_tests.check(
+  not exists (
+    select 1 from public.audit_logs l, jsonb_each_text(to_jsonb(l)) f
+     where f.value ~ '(Nómina|Mercado|Ana|2500000|80000|lujitos\.test|hash-de-prueba)'),
+  'Auditoría: no guarda montos, descripciones, nombres, correos ni contraseñas');
+do $$
+begin
+  insert into public.audit_logs (user_id, action) values ('11111111-1111-4111-8111-111111111111', 'auth.signed_in');
+  raise exception 'PRUEBA FALLIDA: la app escribió en la auditoría';
+exception when insufficient_privilege then raise notice 'ok - La app no puede escribir en la auditoría';
+end $$;
+do $$
+begin
+  update public.audit_logs set action = 'account.created';
+  raise exception 'PRUEBA FALLIDA: la app editó la auditoría';
+exception when insufficient_privilege then raise notice 'ok - La auditoría no se puede editar desde la app';
+end $$;
+do $$
+begin
+  delete from public.audit_logs;
+  raise exception 'PRUEBA FALLIDA: la app borró la auditoría';
+exception when insufficient_privilege then raise notice 'ok - La auditoría no se puede borrar desde la app';
+end $$;
+
+-- ---------------------------------------------------------------------
 -- 3. Usuario B: no ve ni toca nada de A
 -- ---------------------------------------------------------------------
 select set_config('request.jwt.claims', '{"sub": "22222222-2222-4222-8222-222222222222", "role": "authenticated"}', true);
@@ -226,6 +286,10 @@ select lujitos_tests.check((select count(*) from public.profiles) = 1, 'B solo v
 select lujitos_tests.check((select count(*) from public.user_preferences) = 1, 'B solo ve sus preferencias');
 select lujitos_tests.check((select count(*) from public.categories where user_id is not null) = 0, 'B no ve las categorías privadas de A');
 select lujitos_tests.check((select count(*) from public.categories where user_id is null) = 23, 'B sí ve las categorías del sistema');
+select lujitos_tests.check(
+  (select count(*) from public.audit_logs) = 1
+  and (select bool_and(user_id = '22222222-2222-4222-8222-222222222222') from public.audit_logs),
+  'B solo ve su propia auditoría (no la de A)');
 
 with changed as (
   update public.accounts set name = 'Intruso' where id = 'aaaaaaaa-0000-4000-8000-000000000001' returning 1
@@ -307,6 +371,12 @@ begin
   raise exception 'PRUEBA FALLIDA: el visitante anónimo leyó cuentas';
 exception when insufficient_privilege then raise notice 'ok - Sin sesión no se lee ninguna tabla privada';
 end $$;
+do $$
+begin
+  perform count(*) from public.audit_logs;
+  raise exception 'PRUEBA FALLIDA: el visitante anónimo leyó la auditoría';
+exception when insufficient_privilege then raise notice 'ok - Sin sesión no se lee la auditoría';
+end $$;
 
 reset role;
 select lujitos_tests.check(
@@ -323,8 +393,9 @@ select lujitos_tests.check(
   and (select count(*) from public.transactions where user_id = '11111111-1111-4111-8111-111111111111') = 0
   and (select count(*) from public.categories where user_id = '11111111-1111-4111-8111-111111111111') = 0
   and (select count(*) from public.profiles where id = '11111111-1111-4111-8111-111111111111') = 0
-  and (select count(*) from public.user_preferences where user_id = '11111111-1111-4111-8111-111111111111') = 0,
-  'Eliminar un usuario borra en cascada su perfil, cuentas, movimientos y categorías');
+  and (select count(*) from public.user_preferences where user_id = '11111111-1111-4111-8111-111111111111') = 0
+  and (select count(*) from public.audit_logs where user_id = '11111111-1111-4111-8111-111111111111') = 0,
+  'Eliminar un usuario borra en cascada su perfil, cuentas, movimientos, categorías y auditoría');
 select lujitos_tests.check(
   (select count(*) from public.accounts where user_id = '22222222-2222-4222-8222-222222222222') = 1,
   'Eliminar a A no toca los datos de B');

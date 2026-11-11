@@ -113,6 +113,33 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action: string
+          changed_fields: string[]
+          created_at: string
+          entity_id: string | null
+          id: number
+          user_id: string
+        }
+        Insert: {
+          action: string
+          changed_fields?: string[]
+          created_at?: string
+          entity_id?: string | null
+          id?: never
+          user_id: string
+        }
+        Update: {
+          action?: string
+          changed_fields?: string[]
+          created_at?: string
+          entity_id?: string | null
+          id?: never
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           color: string

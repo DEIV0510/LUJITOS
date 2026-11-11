@@ -8,7 +8,7 @@ import { StyleSheet, View } from 'react-native';
 import { AnimatedSplash } from '@/components/brand/AnimatedSplash';
 import { AppNavigator } from '@/features/auth/AppNavigator';
 import { navigationGuards } from '@/features/auth/navigation';
-import { ProfileErrorScreen, SetupRequiredScreen } from '@/features/auth/StatusScreens';
+import { OfflineScreen, ProfileErrorScreen, SetupRequiredScreen } from '@/features/auth/StatusScreens';
 import { PrivacyProvider } from '@/features/privacy/PrivacyProvider';
 import { AuthProvider, useAuth } from '@/hooks/auth';
 import { fontAssets, ThemeProvider, useAppTheme } from '@/theme';
@@ -43,6 +43,7 @@ export default function RootLayout() {
  *   sin sesión   → (auth): bienvenida, registro, inicio de sesión
  *   con sesión   → onboarding la primera vez; luego (app)
  *   recuperación → solo reset-password
+ *   sin conexión → sesión guardada que no se pudo comprobar: «Reintentar»
  * Las rutas privadas viven en el grupo (app): una pantalla nueva ahí queda
  * protegida automáticamente.
  */
@@ -75,6 +76,8 @@ function AppShell() {
   let content: React.ReactNode = null;
   if (guards.setup) {
     content = <SetupRequiredScreen />;
+  } else if (guards.offline) {
+    content = <OfflineScreen />;
   } else if (signedIn && !profile && profileError) {
     content = <ProfileErrorScreen message={profileError} />;
   } else if (ready) {

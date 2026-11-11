@@ -113,6 +113,18 @@ await test('La sesión se renueva con el refresh token', async () => {
   const { data, error } = await a.client.auth.refreshSession();
   assert(!error && data.session, error?.message ?? 'Sin sesión renovada');
 });
+await test('Registro duplicado: Supabase responde sin identidades y la app lo detecta', async () => {
+  // Con confirmación de correo, Supabase no da error para no revelar qué correos
+  // existen: devuelve un usuario sin identidades. authService.signUp lo traduce
+  // a «Ya existe una cuenta con ese correo».
+  const { data, error } = await newClient().client.auth.signUp({
+    email: env.TEST_USER_A_EMAIL,
+    password: `Duplicado${Date.now()}x`,
+  });
+  assert(!error, `Llegó un error: ${error?.code}`);
+  assert(data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0, 'El usuario duplicado trae identidades');
+  assert(!data.session, 'El registro duplicado abrió una sesión');
+});
 
 console.log('\nPerfil y categorías');
 await test('El registro creó el perfil con valores de Colombia', async () => {
@@ -151,6 +163,25 @@ await test('La base rechaza un monto negativo aunque la app no lo valide', async
   assert(error?.code === '23514', `Se esperaba 23514 y llegó ${error?.code ?? 'éxito'}`);
 });
 
+console.log('\nAuditoría');
+await test('El inicio de sesión, la cuenta y el movimiento quedan en la auditoría de A', async () => {
+  const { data, error } = await a.client.from('audit_logs').select('action, entity_id, changed_fields');
+  assert(!error, error?.message);
+  const actions = new Set(data.map((row) => row.action));
+  assert(actions.has('auth.signed_in'), 'No quedó el inicio de sesión');
+  assert(data.some((row) => row.action === 'account.created' && row.entity_id === accountA), 'No quedó la cuenta creada');
+  assert(actions.has('transaction.created'), 'No quedó el movimiento');
+  assert(!JSON.stringify(data).includes(marker) && !JSON.stringify(data).includes('25000'), 'La auditoría guardó textos o montos');
+});
+await test('La app no puede escribir en la auditoría', async () => {
+  const { error } = await a.client.from('audit_logs').insert({ action: 'auth.signed_in' });
+  assert(error, 'Se pudo insertar en la auditoría');
+});
+await test('B no ve la auditoría de A', async () => {
+  const { data } = await b.client.from('audit_logs').select('entity_id').eq('entity_id', accountA);
+  assert(data.length === 0, 'B leyó la auditoría de A');
+});
+
 console.log('\nAislamiento entre usuarios (RLS)');
 await test('B no ve la cuenta de A', async () => {
   const { data } = await b.client.from('accounts').select('id').eq('id', accountA);
@@ -183,9 +214,11 @@ await test('Sin sesión no se lee nada', async () => {
 });
 
 console.log('\nCierre de sesión');
-await test('Archivar la cuenta de prueba', async () => {
+await test('Archivar la cuenta de prueba (queda en la auditoría)', async () => {
   const { error } = await a.client.from('accounts').update({ is_active: false }).eq('id', accountA);
   assert(!error, error?.message);
+  const { data } = await a.client.from('audit_logs').select('action').eq('entity_id', accountA).eq('action', 'account.archived');
+  assert(data.length === 1, 'No quedó el archivo de la cuenta en la auditoría');
 });
 await test('Cerrar sesión elimina la sesión guardada y revoca el refresh token', async () => {
   const { data: before } = await a.client.auth.getSession();

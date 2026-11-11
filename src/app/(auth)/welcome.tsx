@@ -7,6 +7,7 @@ import { LogoMark } from '@/components/brand/LogoMark';
 import { AppText } from '@/components/ui/AppText';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/Buttons';
 import { Icon } from '@/components/ui/Icon';
+import { useAuth } from '@/hooks/auth';
 import { palette, screenPadding } from '@/theme';
 import type { IconName } from '@/types/finance';
 
@@ -19,6 +20,8 @@ const POINTS: { icon: IconName; text: string }[] = [
 /** Bienvenida: primera pantalla sin sesión. */
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
+  // «Tu sesión terminó…» cuando la sesión venció sin que el usuario la cerrara.
+  const { notice } = useAuth();
   return (
     <View style={[styles.root, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 20 }]}>
       <View style={styles.watermark} pointerEvents="none">
@@ -48,6 +51,14 @@ export default function WelcomeScreen() {
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(300).duration(500)} style={styles.actions}>
+        {notice ? (
+          <View style={styles.notice} accessibilityLiveRegion="polite">
+            <Icon name="info.circle.fill" size={16} color={palette.gold} />
+            <AppText variant="footnote" style={styles.noticeText}>
+              {notice}
+            </AppText>
+          </View>
+        ) : null}
         <PrimaryButton label="Crear cuenta" size="large" tone="inverse" onPress={() => router.push('/sign-up')} />
         <SecondaryButton label="Iniciar sesión" size="large" tone="inverse" onPress={() => router.push('/sign-in')} />
       </Animated.View>
@@ -81,4 +92,16 @@ const styles = StyleSheet.create({
   },
   pointText: { flex: 1, color: 'rgba(244,241,232,0.86)' },
   actions: { gap: 12 },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(198,166,106,0.35)',
+    backgroundColor: 'rgba(244,241,232,0.06)',
+  },
+  noticeText: { flex: 1, color: palette.ivory },
 });
