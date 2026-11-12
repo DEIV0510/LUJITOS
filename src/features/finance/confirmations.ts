@@ -1,7 +1,8 @@
 /**
  * Advertencias del motor financiero que el usuario puede aceptar:
  *   saldo que quedaría negativo, compra que supera el cupo, transferencia
- *   repetida hace un momento y archivar una cuenta con saldo.
+ *   repetida hace un momento, archivar una cuenta o deuda con saldo y pagar
+ *   más de lo que se debe (queda saldo a favor).
  * La operación se intenta; si el servidor advierte, se pregunta y, solo si el
  * usuario acepta, se repite con el permiso correspondiente.
  */
@@ -43,6 +44,12 @@ export function confirmWarning(error: FinanceError): Promise<boolean> {
         `${amount !== null ? `Tiene ${formatMoney(amount)}. ` : ''}${error.message} Si ya no la usas, primero transfiere o ajusta el saldo a cero.`,
         'Archivar igual',
       );
+    case 'overpayment':
+      return ask(
+        'Pagas más de lo que debes',
+        `${amount !== null ? `Hoy debes ${formatMoney(amount)}. ` : ''}Si continúas, la diferencia queda como saldo a favor en la deuda.`,
+        'Pagar igual',
+      );
     default:
       return Promise.resolve(false);
   }
@@ -54,14 +61,19 @@ export function confirmWarning(error: FinanceError): Promise<boolean> {
  */
 export async function runWithConfirmations<T>(operation: (options: WriteOptions) => Promise<T>): Promise<T | null> {
   const options: WriteOptions = {};
-  // Como mucho: una advertencia de saldo/cupo y una de transferencia repetida.
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  // Como mucho: saldo/cupo, transferencia repetida y pago mayor que la deuda.
+  for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
       return await operation({ ...options });
     } catch (error) {
       if (isFinanceError(error, 'insufficient_funds') || isFinanceError(error, 'over_credit_limit')) {
         if (!(await confirmWarning(error))) return null;
         options.allowNegative = true;
+        continue;
+      }
+      if (isFinanceError(error, 'overpayment')) {
+        if (!(await confirmWarning(error))) return null;
+        options.allowOverpay = true;
         continue;
       }
       if (isFinanceError(error, 'duplicate_transfer')) {

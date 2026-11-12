@@ -22,6 +22,7 @@ const stub = await readFile(join(root, 'supabase', 'tests', 'local', 'supabase-s
 const TEST_FILES = [
   ['Pruebas de seguridad e integridad (RLS)', 'rls_security.test.sql'],
   ['Pruebas del motor financiero (Fase 4)', 'finance_engine.test.sql'],
+  ['Pruebas de presupuestos, metas, deudas y planificación (Fase 5)', 'planning.test.sql'],
 ];
 const tests = await Promise.all(
   TEST_FILES.map(async ([title, file]) => ({ title, sql: await readFile(join(root, 'supabase', 'tests', file), 'utf8') })),

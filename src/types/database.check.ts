@@ -26,6 +26,21 @@ type BalanceViewReal = Flat<
   }
 >;
 
+// Vistas de la Fase 5: mismas reglas (solo estas columnas pueden ser NULL).
+type Views = Generated['public']['Views'];
+type ViewReal<V, Nullable extends keyof V> = Flat<
+  { [K in Exclude<keyof V, Nullable>]: NonNullable<V[K]> } & { [K in Nullable]: V[K] }
+>;
+type BudgetStatusReal = ViewReal<Views['budget_status']['Row'], 'previous_period_start' | 'previous_spent'>;
+type GoalProgressReal = ViewReal<
+  Views['savings_goal_progress']['Row'],
+  'days_left' | 'monthly_needed' | 'weekly_needed' | 'daily_needed' | 'account_balance' | 'account_allocated' | 'last_movement_date'
+>;
+type DebtOverviewReal = ViewReal<
+  Views['debt_overview']['Row'],
+  'last_payment_date' | 'next_payment_date' | 'days_to_next_payment' | 'days_to_due'
+>;
+
 export type DatabaseTypesMatch = [
   Expect<Equal<Flat<Tables['profiles']['Row']>, Flat<Hand.ProfileRow>>>,
   Expect<Equal<Flat<Tables['accounts']['Row']>, Flat<Hand.AccountRow>>>,
@@ -35,6 +50,14 @@ export type DatabaseTypesMatch = [
   Expect<Equal<Flat<Tables['user_preferences']['Row']>, Flat<Hand.UserPreferencesRow>>>,
   Expect<Equal<Flat<Tables['audit_logs']['Row']>, Flat<Hand.AuditLogRow>>>,
   Expect<Equal<BalanceViewReal, Flat<Hand.AccountBalanceRow>>>,
+  Expect<Equal<Flat<Tables['budgets']['Row']>, Flat<Hand.BudgetRow>>>,
+  Expect<Equal<Flat<Tables['budget_alerts']['Row']>, Flat<Hand.BudgetAlertRow>>>,
+  Expect<Equal<Flat<Tables['savings_goals']['Row']>, Flat<Hand.SavingsGoalRow>>>,
+  Expect<Equal<Flat<Tables['savings_goal_movements']['Row']>, Flat<Hand.SavingsGoalMovementRow>>>,
+  Expect<Equal<Flat<Tables['debts']['Row']>, Flat<Hand.DebtRow>>>,
+  Expect<Equal<BudgetStatusReal, Flat<Hand.BudgetStatusRow>>>,
+  Expect<Equal<GoalProgressReal, Flat<Hand.SavingsGoalProgressRow>>>,
+  Expect<Equal<DebtOverviewReal, Flat<Hand.DebtOverviewRow>>>,
   Expect<Equal<Enums['account_type'], Hand.AccountTypeDb>>,
   Expect<Equal<Enums['connection_type'], Hand.ConnectionTypeDb>>,
   Expect<Equal<Enums['category_type'], Hand.CategoryTypeDb>>,

@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryIcon } from '@/components/finance/Badges';
@@ -41,6 +41,8 @@ export default function CategoryEditScreen() {
   const [name, setName] = useState(category?.name ?? '');
   const [icon, setIcon] = useState<IconName>(category?.icon ?? 'tag.fill');
   const [tone, setTone] = useState<Tone>(category?.tone ?? 'sage');
+  const [isFixed, setIsFixed] = useState(category?.isFixed ?? false);
+  const [isEssential, setIsEssential] = useState(category?.isEssential ?? false);
   const [nameError, setNameError] = useState<string | undefined>();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -67,8 +69,9 @@ export default function CategoryEditScreen() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      if (category) await updateCategory(category.id, { name: trimmed, icon, tone });
-      else await createCategory({ name: trimmed, kind, icon, tone });
+      const flags = kind === 'expense' ? { isFixed, isEssential } : {};
+      if (category) await updateCategory(category.id, { name: trimmed, icon, tone, ...flags });
+      else await createCategory({ name: trimmed, kind, icon, tone, ...flags });
       haptics.success();
       setDone(editing ? 'Categoría actualizada' : 'Categoría creada');
     } catch (error) {
@@ -159,6 +162,40 @@ export default function CategoryEditScreen() {
               error={nameError}
             />
           </FinancialCard>
+
+          {kind === 'expense' ? (
+            <FinancialCard padding={spacing.lg} style={styles.fields}>
+              <ListRow
+                title="Gasto fijo"
+                subtitle="Se repite cada mes por un valor parecido"
+                icon="repeat"
+                right={
+                  <Switch
+                    value={isFixed}
+                    onValueChange={setIsFixed}
+                    trackColor={{ true: colors.primary, false: colors.surfaceMuted }}
+                    thumbColor={colors.surface}
+                    accessibilityLabel="Gasto fijo"
+                  />
+                }
+              />
+              <ListRow
+                title="Gasto esencial"
+                subtitle="No se puede dejar de pagar. Cuenta en la capacidad de ahorro"
+                icon="checkmark.shield.fill"
+                showDivider
+                right={
+                  <Switch
+                    value={isEssential}
+                    onValueChange={setIsEssential}
+                    trackColor={{ true: colors.primary, false: colors.surfaceMuted }}
+                    thumbColor={colors.surface}
+                    accessibilityLabel="Gasto esencial"
+                  />
+                }
+              />
+            </FinancialCard>
+          ) : null}
 
           <View style={{ gap: spacing.md }}>
             <AppText variant="overline" color="textSecondary">

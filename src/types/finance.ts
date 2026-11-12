@@ -38,9 +38,11 @@ export type AccountKind =
   | 'cdt'
   | 'investment_fund'
   | 'credit_card'
+  /** Deuda (préstamo, crédito, deuda personal): se maneja desde Deudas. */
+  | 'loan'
   | 'other';
 
-export type AccountGroup = 'banks' | 'wallets' | 'cash' | 'other' | 'investments' | 'credit';
+export type AccountGroup = 'banks' | 'wallets' | 'cash' | 'other' | 'investments' | 'credit' | 'debts';
 
 export type RegistrationMethod = 'manual' | 'imported' | 'connected';
 
@@ -114,7 +116,16 @@ export type Transaction = {
   voidedAt?: string | null;
   voidReason?: string | null;
   createdAt?: string;
+  /** Para qué se hizo: cuota o abono de deuda, interés, aporte o retiro de meta. */
+  purpose?: TransactionPurpose | null;
 };
+
+export type TransactionPurpose =
+  | 'debt_installment'
+  | 'debt_extra'
+  | 'debt_interest'
+  | 'goal_contribution'
+  | 'goal_withdrawal';
 
 export type CategoryKind = 'income' | 'expense';
 
@@ -129,6 +140,10 @@ export type Category = {
   isDefault?: boolean;
   /** Archivada: no se ofrece para movimientos nuevos, pero conserva su historial. */
   archivedAt?: string | null;
+  /** Gasto fijo (se repite cada mes). */
+  isFixed?: boolean;
+  /** Gasto esencial (para la capacidad de ahorro). */
+  isEssential?: boolean;
 };
 
 export type BudgetLine = {

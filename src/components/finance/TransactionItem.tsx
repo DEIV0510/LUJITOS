@@ -24,7 +24,7 @@ type Props = {
 /** Nombre corto para las listas: la entidad («Bancolombia») o el nombre propio de la cuenta. */
 function shortAccountName(account: Account | undefined): string {
   if (!account) return '';
-  if (account.kind === 'credit_card' || account.institutionId === 'cash') return account.name;
+  if (account.kind === 'credit_card' || account.kind === 'loan' || account.institutionId === 'cash') return account.name;
   return institutionOf(account).name;
 }
 

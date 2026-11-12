@@ -36,6 +36,11 @@ export function isCreditCard(account: Pick<Account, 'kind'>): boolean {
   return account.kind === 'credit_card';
 }
 
+/** Tarjetas y deudas: su saldo negativo es lo que se debe. */
+export function isLiability(account: Pick<Account, 'kind'>): boolean {
+  return account.kind === 'credit_card' || account.kind === 'loan';
+}
+
 /** Deuda de una tarjeta (su saldo negativo). 0 si no debe nada. */
 export function cardDebt(account: Pick<Account, 'balance'>): Money {
   return Math.max(-account.balance, 0);

@@ -73,6 +73,11 @@ Aplica en orden los archivos de `supabase/migrations/`:
 | `20261112090000_account_types_extension.sql` | Tipos de cuenta CDT y fondo de inversión |
 | `20261112090100_finance_engine.sql` | Motor financiero: regla única de saldos, funciones RPC transaccionales, anulación, ajuste de saldo, categorías archivables, resumen y historial |
 | `20261112090200_rpc_private_impl.sql` | Implementaciones con privilegios al esquema `private`; en la API solo envoltorios sin privilegios |
+| `20261112150000_loan_account_type.sql` | Tipo de cuenta `loan` para deudas (en su propio archivo: un valor nuevo de enum no se usa en la misma transacción) |
+| `20261112150100_budgets_goals_debts.sql` | Fase 5: presupuestos y avisos, metas y aportes, deudas, planificación, vistas calculadas, RPC, RLS y auditoría. Detalle en [PRESUPUESTOS_METAS_DEUDAS.md](PRESUPUESTOS_METAS_DEUDAS.md) |
+
+Antes de aplicar en el proyecto real: `npm run test:db` (local) y
+`npx --yes supabase@3.1.0 db push --remote --dry-run` para ver qué se aplicará.
 
 Después de una migración nueva: `npm run db:types` regenera
 `src/types/database.generated.ts` y `npm run typecheck` avisa si `src/types/database.ts`
@@ -122,14 +127,15 @@ sus datos: `npm run test:users:clean`.
 
 | Comando | Qué prueba | Necesita |
 | --- | --- | --- |
-| `npm test` | 75 pruebas: validaciones, sesión en el llavero, flujos de auth, navegación con el router real según la sesión, reglas contables | Nada |
-| `npm run test:db` | Migraciones + 66 comprobaciones de RLS, integridad y auditoría en PostgreSQL local (PGlite), con y sin permisos automáticos | Nada |
-| `npm run test:db:remote` | Las mismas 66 comprobaciones en tu proyecto real (todo dentro de una transacción que se deshace) | Proyecto vinculado |
-| `npm run test:integration` | 21 pruebas por la API real: inicio y cierre de sesión, persistencia y renovación de sesión, registro duplicado, perfil, auditoría, aislamiento entre usuarios | `.env.local` + usuarios de prueba |
+| `npm test` | 191 pruebas: validaciones, sesión en el llavero, auth, navegación, reglas contables, servicios, proyecciones, recordatorios y pantallas | Nada |
+| `npm run test:db` | Migraciones + 248 comprobaciones (RLS e integridad 71, motor financiero 71, Fase 5 106) en PostgreSQL local (PGlite), con y sin permisos automáticos | Nada |
+| `npm run test:db:remote` | Las mismas comprobaciones en tu proyecto real (cada archivo dentro de una transacción que se deshace) | Proyecto vinculado |
+| `npm run test:integration` | 36 pruebas por la API real: sesión, motor financiero, presupuesto, meta, deuda, sobrepago, planificación, aislamiento entre usuarios y volver a entrar | `.env.local` + usuarios de prueba |
 
 ## 7. Comprobar que tus datos están protegidos
 
-- En el panel: **Database → Tables**: las 6 tablas muestran **RLS enabled**.
+- En el panel: **Database → Tables**: las 12 tablas muestran **RLS enabled** (incluye
+  `audit_logs`, `budgets`, `budget_alerts`, `savings_goals`, `savings_goal_movements` y `debts`).
 - `npm run db:advisors` (o **Advisors → Security Advisor**): la única alerta es
   «Leaked Password Protection Disabled», que solo se puede activar en el plan Pro.
 - `npm run test:db:remote` termina con «TODAS LAS PRUEBAS DE SEGURIDAD PASARON».

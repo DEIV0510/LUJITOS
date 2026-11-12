@@ -138,7 +138,7 @@ export default function AccountsScreen() {
           <FinancialCard padding={spacing.lg} style={styles.links}>
             <ListRow icon="creditcard.fill" tone="gold" title="Tarjetas de crédito" subtitle="Cupo, deuda, corte y pago" onPress={() => router.push('/cards')} />
             <ListRow icon="square.grid.2x2.fill" tone="sage" title="Categorías" subtitle="Crea, edita y archiva las tuyas" onPress={() => router.push('/categories')} showDivider />
-            <ListRow icon="banknote.fill" tone="clay" title="Deudas" subtitle="Préstamos, cuotas y estrategias" onPress={() => router.push('/debts')} showDivider />
+            <ListRow icon="banknote.fill" tone="clay" title="Deudas" subtitle="Préstamos, cuotas y pagos" onPress={() => router.push('/debts')} showDivider />
           </FinancialCard>
           <SecondaryButton label="Agregar cuenta" icon="plus" size="large" onPress={() => router.push('/account/new')} />
         </>

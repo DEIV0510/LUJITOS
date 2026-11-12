@@ -45,6 +45,7 @@ const GROUP_TONE: Record<AccountGroup, Tone> = {
   other: 'olive',
   investments: 'gold',
   credit: 'clay',
+  debts: 'rose',
 };
 
 function StatisticsScreen() {

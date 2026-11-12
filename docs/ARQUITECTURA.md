@@ -178,14 +178,25 @@ usuario no puede quedar ningún dato del anterior en memoria.
   compuestas `(account_id, user_id)`: aunque alguien conozca el UUID de una cuenta ajena,
   la base rechaza la referencia.
 
-## 6. Base de datos (Fases 3 y 4)
+## 6. Base de datos (Fases 3, 4 y 5)
 
 Tablas creadas (todas con RLS): `profiles`, `accounts`, `categories`, `transactions`,
-`account_snapshots`, `user_preferences`, `audit_logs`, más la vista `account_balances`
-(security_invoker).
-Pendientes para sus fases: `budgets`, `budget_categories`, `savings_goals`, `debts`,
-`recurring_transactions`, `import_batches`, `institution_connections`, `transaction_rules`,
-`notifications`. Guía completa: [SUPABASE.md](SUPABASE.md).
+`account_snapshots`, `user_preferences`, `audit_logs`, `budgets`, `budget_alerts`,
+`savings_goals`, `savings_goal_movements`, `debts`, más las vistas (security_invoker)
+`account_balances`, `budget_status`, `savings_goal_progress` y `debt_overview`.
+Pendientes para sus fases: `recurring_transactions`, `import_batches`,
+`institution_connections`, `transaction_rules`. Guía completa: [SUPABASE.md](SUPABASE.md).
+
+**Fase 5.** Las deudas son cuentas de tipo `loan` (saldo negativo = lo que se debe) más una
+fila en `debts` con sus datos: un pago es una transferencia y un interés es un gasto, así
+que la regla única de saldos, el patrimonio y los presupuestos funcionan sin casos
+especiales y nada se cuenta dos veces. `transactions.purpose` solo etiqueta (cuota, abono,
+interés, aporte, retiro). Las metas guardan asignaciones (no dinero); si se mueve dinero, la
+transferencia queda enlazada al aporte y un trigger los mantiene alineados. Lo gastado,
+ahorrado y pendiente se calcula en las vistas; los avisos de presupuesto los escribe un
+trigger una sola vez por período. Escrituras solo por RPC (mismo patrón `private`/`public`).
+Las cuentas `loan` no aparecen en Mis cuentas ni en los formularios de movimientos: se
+manejan desde Deudas. Fórmulas: [PRESUPUESTOS_METAS_DEUDAS.md](PRESUPUESTOS_METAS_DEUDAS.md).
 
 | Tabla | SELECT | INSERT | UPDATE | DELETE |
 | --- | --- | --- | --- | --- |
@@ -196,6 +207,11 @@ Pendientes para sus fases: `budgets`, `budget_categories`, `savings_goals`, `deb
 | transactions | propios | solo RPC `create_transaction` / `reconcile_account` | solo RPC `update_transaction` / `void_transaction` | no: anulación |
 | account_snapshots | propios | propios | no | no |
 | audit_logs | propios | no: solo triggers | no | no |
+| budgets | propios | solo RPC `create_budget` | solo RPC `update_budget` / `archive_budget` | RPC `delete_budget` (no toca movimientos) |
+| budget_alerts | propios | no: solo el trigger de avisos | solo `seen_at` (marcar visto) | en cascada con su presupuesto |
+| savings_goals | propias | solo RPC `create_savings_goal` | solo RPC `update_savings_goal` / `archive_savings_goal` | RPC `delete_savings_goal` (sin aportes) |
+| savings_goal_movements | propios | solo RPC `add_goal_movement` | solo RPC `update_goal_movement` / `void_goal_movement` | no: se revierten |
+| debts | propias | solo RPC `create_debt` | solo RPC `update_debt` / `archive_debt` | RPC `delete_debt` (sin movimientos) |
 
 **Motor financiero (Fase 4).** Toda escritura de cuentas y movimientos pasa por funciones
 RPC (`supabase/migrations/20261112090100_finance_engine.sql`). Cada una toma el usuario de

@@ -1,6 +1,6 @@
 /**
- * Errores del motor financiero (funciones RPC). Los códigos LJ00x los define
- * supabase/migrations/20261112090100_finance_engine.sql; sus mensajes ya vienen
+ * Errores del motor financiero (funciones RPC). Los códigos LJ0xx los definen
+ * las migraciones finance_engine (LJ001–LJ009) y budgets_goals_debts (LJ010–LJ013); sus mensajes ya vienen
  * en español desde el servidor. Algunos son advertencias que el usuario puede
  * confirmar (saldo negativo, cupo, transferencia repetida, archivar con saldo).
  */
@@ -17,6 +17,10 @@ export type FinanceErrorCode =
   | 'invalid'
   | 'voided'
   | 'category_in_use'
+  | 'goal_below_zero'
+  | 'overpayment'
+  | 'duplicate_budget'
+  | 'has_history'
   | 'unknown';
 
 const BY_SQLSTATE: Record<string, FinanceErrorCode> = {
@@ -29,6 +33,10 @@ const BY_SQLSTATE: Record<string, FinanceErrorCode> = {
   LJ007: 'invalid',
   LJ008: 'voided',
   LJ009: 'category_in_use',
+  LJ010: 'goal_below_zero',
+  LJ011: 'overpayment',
+  LJ012: 'duplicate_budget',
+  LJ013: 'has_history',
 };
 
 export class FinanceError extends Error {

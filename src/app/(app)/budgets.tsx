@@ -13,8 +13,9 @@ import { BUDGET_ALERTS, DEMO_MONTHLY } from '@/features/demo/data';
 import { getBudgetOverview } from '@/features/demo/selectors';
 import { MONTHS, capitalize, parseISO } from '@/lib/dates';
 import { formatPercent } from '@/lib/money';
-import { LiveGate } from '@/features/data/ComingSoon';
 import { useAppTheme } from '@/theme';
+import { useFinanceData } from '@/features/data/FinanceDataProvider';
+import { LiveBudgetsScreen } from '@/features/planning/screens/BudgetScreens';
 
 function BudgetsScreen() {
   const { colors, spacing } = useAppTheme();
@@ -88,7 +89,7 @@ function BudgetsScreen() {
       <SecondaryButton
         label="Nuevo presupuesto"
         icon="plus"
-        onPress={() => Alert.alert('Nuevo presupuesto', 'Crear y editar presupuestos se activa en la Fase 6.')}
+        onPress={() => Alert.alert('Nuevo presupuesto', 'Estás en modo demostración: nada se guarda. Desactívalo en Configuración para crear tus presupuestos.')}
       />
     </Screen>
   );
@@ -103,15 +104,8 @@ const styles = StyleSheet.create({
   historyValue: { width: 48, textAlign: 'right' },
 });
 
+/** Datos reales por defecto; la versión de ejemplo solo en modo demostración. */
 export default function BudgetsRoute() {
-  return (
-    <LiveGate
-      title="Presupuestos"
-      phase="Fase 6"
-      description="Define un límite por categoría y recibe alertas al 70 %, 85 % y 100 %."
-      icon="chart.pie.fill"
-      layout="stack"
-      demo={<BudgetsScreen />}
-    />
-  );
+  const { mode } = useFinanceData();
+  return mode === 'demo' ? <BudgetsScreen /> : <LiveBudgetsScreen />;
 }

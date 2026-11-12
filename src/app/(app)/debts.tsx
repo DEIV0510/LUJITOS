@@ -15,8 +15,9 @@ import { DEMO_DEBTS } from '@/features/demo/data';
 import { formatShortDate } from '@/lib/dates';
 import { formatPercent } from '@/lib/money';
 import { useAppTheme } from '@/theme';
-import { LiveGate } from '@/features/data/ComingSoon';
 import type { Debt, IconName } from '@/types/finance';
+import { useFinanceData } from '@/features/data/FinanceDataProvider';
+import { LiveDebtsScreen } from '@/features/planning/screens/DebtScreens';
 
 const KIND: Record<Debt['kind'], { label: string; icon: IconName }> = {
   credit_card: { label: 'Tarjeta de crédito', icon: 'creditcard.fill' },
@@ -103,7 +104,7 @@ function DebtsScreen() {
       </View>
 
       <View style={{ gap: spacing.md }}>
-        <SectionHeader title="Estrategia de pago" subtitle="Simulador completo en la Fase 7" />
+        <SectionHeader title="Estrategia de pago" subtitle="Ejemplo" />
         <SegmentedControl
           options={[
             { value: 'avalanche', label: 'Avalancha' },
@@ -164,15 +165,8 @@ const styles = StyleSheet.create({
   step: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
 });
 
+/** Datos reales por defecto; la versión de ejemplo solo en modo demostración. */
 export default function DebtsRoute() {
-  return (
-    <LiveGate
-      title="Deudas"
-      phase="Fase 7"
-      description="Préstamos, créditos y compras a cuotas, con simulador de avalancha y bola de nieve."
-      icon="banknote.fill"
-      layout="stack"
-      demo={<DebtsScreen />}
-    />
-  );
+  const { mode } = useFinanceData();
+  return mode === 'demo' ? <DebtsScreen /> : <LiveDebtsScreen />;
 }

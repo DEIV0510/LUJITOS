@@ -19,7 +19,7 @@ import { FilterChip, SelectField, TextField } from '@/components/ui/FormField';
 import { OptionSheet } from '@/components/ui/OptionSheet';
 import { InfoRow, ListRow } from '@/components/ui/Rows';
 import { SuccessView } from '@/components/ui/SuccessView';
-import { cardDebt, institutionOf, isCreditCard } from '@/features/accounts/display';
+import { cardDebt, institutionOf, isLiability } from '@/features/accounts/display';
 import { FormMessage } from '@/features/auth/components';
 import { useFinanceData } from '@/features/data/FinanceDataProvider';
 import { usePrivacy } from '@/features/privacy/PrivacyProvider';
@@ -52,7 +52,7 @@ export function ReconcileForm({ initialAccountId, bottomInset }: { initialAccoun
   const [saved, setSaved] = useState<Money | null>(null);
 
   const account = getAccount(accountId ?? undefined);
-  const isCard = account ? isCreditCard(account) : false;
+  const isCard = account ? isLiability(account) : false;
   // En tarjetas se escribe la deuda real; el saldo es su negativo.
   const observedBalance: Money = isCard ? -observed : negative ? -observed : observed;
   const difference = account ? reconcileDifference(observedBalance, account.balance) : 0;
@@ -60,7 +60,7 @@ export function ReconcileForm({ initialAccountId, bottomInset }: { initialAccoun
   const submit = () => {
     const found = {
       account: account ? undefined : 'Elige la cuenta.',
-      amount: touched ? undefined : isCard ? 'Escribe la deuda real de la tarjeta.' : 'Escribe el saldo real de la cuenta.',
+      amount: touched ? undefined : isCard ? 'Escribe la deuda real.' : 'Escribe el saldo real de la cuenta.',
       reason: reason.trim().length === 0 ? 'Escribe el motivo del ajuste.' : undefined,
     };
     setErrors(found);

@@ -36,6 +36,7 @@ export const ACCOUNT_KIND_LABEL: Record<AccountKind, string> = {
   cdt: 'CDT',
   investment_fund: 'Fondo de inversión',
   credit_card: 'Tarjeta de crédito',
+  loan: 'Deuda',
   other: 'Cuenta personalizada',
 };
 
@@ -63,6 +64,7 @@ export const ACCOUNT_KIND_ICON: Record<AccountKind, IconName> = {
   cdt: 'lock.fill',
   investment_fund: 'chart.pie.fill',
   credit_card: 'creditcard.fill',
+  loan: 'banknote',
   other: 'wallet.pass.fill',
 };
 
@@ -73,6 +75,7 @@ export const ACCOUNT_GROUP_LABEL: Record<AccountGroup, string> = {
   other: 'Otras cuentas',
   investments: 'Inversiones',
   credit: 'Tarjetas de crédito',
+  debts: 'Deudas',
 };
 
 /** Mismo criterio que public.financial_summary(): no cambiar uno sin el otro. */
@@ -92,6 +95,8 @@ export function groupOf(kind: AccountKind): AccountGroup {
       return 'investments';
     case 'credit_card':
       return 'credit';
+    case 'loan':
+      return 'debts';
     default:
       return 'other';
   }

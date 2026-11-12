@@ -22,6 +22,12 @@
   resumen se leen del servidor (`account_balances`, `financial_summary`): no se suman en la app.
 - La regla de cómo afecta un movimiento a una cuenta vive en `public.transaction_effect`.
   Cualquier cálculo nuevo de saldos usa esa función.
+- Presupuestos, metas y deudas (Fase 5) también se escriben SOLO por RPC (`src/services/planning`).
+  Una deuda es una cuenta `loan` + fila en `debts`: pagos = transferencias, intereses = gastos.
+  Las cuentas `loan` no van en Mis cuentas ni en los formularios de movimientos.
+  Cifras de presupuestos, metas, deudas y planificación: vistas y funciones del servidor.
+- Notificaciones: solo locales (`src/lib/notifications.ts`); el permiso se pide al activarlas.
+  No afirmar que funcionan sin probarlas en el iPhone.
 - Selectores sin animación (preferencia del usuario): `OptionSheet` y `SegmentedControl` son instantáneos.
 - Dinero: PESOS ENTEROS en la app y BIGINT en la base. Formato y lectura solo con
   `src/lib/money.ts`. Transferencias, ajustes y pagos de tarjeta no son ingreso ni gasto.

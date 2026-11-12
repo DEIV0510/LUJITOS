@@ -19,20 +19,21 @@ type Module = {
   subtitle: string;
   icon: IconName;
   tone: Tone;
-  href: '/budgets' | '/savings' | '/debts' | '/cards' | '/calendar' | '/recurring' | '/notifications' | '/settings';
+  href: '/budgets' | '/savings' | '/debts' | '/planning' | '/cards' | '/calendar' | '/recurring' | '/notifications' | '/settings';
 };
 
 const PLANNING: Module[] = [
   { title: 'Presupuestos', subtitle: 'Límites por categoría y alertas', icon: 'chart.pie.fill', tone: 'forest', href: '/budgets' },
   { title: 'Metas de ahorro', subtitle: 'Objetivos y cuánto separar', icon: 'target', tone: 'teal', href: '/savings' },
-  { title: 'Deudas', subtitle: 'Préstamos y estrategias de pago', icon: 'banknote.fill', tone: 'clay', href: '/debts' },
+  { title: 'Deudas', subtitle: 'Préstamos, cuotas y pagos', icon: 'banknote.fill', tone: 'clay', href: '/debts' },
+  { title: 'Planificación', subtitle: 'Capacidad de ahorro y proyecciones', icon: 'chart.line.uptrend.xyaxis', tone: 'sage', href: '/planning' },
   { title: 'Tarjetas de crédito', subtitle: 'Cupo, cortes y pagos', icon: 'creditcard.fill', tone: 'gold', href: '/cards' },
   { title: 'Calendario financiero', subtitle: 'Vencimientos del mes', icon: 'calendar', tone: 'slate', href: '/calendar' },
   { title: 'Pagos recurrentes', subtitle: 'Suscripciones y servicios', icon: 'repeat', tone: 'plum', href: '/recurring' },
 ];
 
 const ACCOUNT: Module[] = [
-  { title: 'Notificaciones', subtitle: 'Alertas y recordatorios', icon: 'bell.fill', tone: 'amber', href: '/notifications' },
+  { title: 'Avisos', subtitle: 'Alertas y recordatorios', icon: 'bell.fill', tone: 'amber', href: '/notifications' },
   { title: 'Configuración', subtitle: 'Apariencia, privacidad y datos', icon: 'gearshape.fill', tone: 'stone', href: '/settings' },
 ];
 

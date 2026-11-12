@@ -3,11 +3,11 @@
 Gestor de finanzas personales para iPhone. Colombia, español, pesos colombianos (COP),
 zona horaria America/Bogota. **TU DINERO, BAJO CONTROL.**
 
-Estado: **Fase 4 terminada** (2026-11-12) — motor financiero real: cuentas de todo tipo (bancos,
-billeteras, efectivo, inversiones, CDT, tarjetas con cupo), ingresos, gastos, transferencias y
-ajustes de saldo; editar y anular con trazabilidad; saldos, patrimonio y resumen calculados en
-PostgreSQL por funciones transaccionales. Reportes: [docs/FASE4.md](docs/FASE4.md) ·
-[docs/FASE3.md](docs/FASE3.md).
+Estado: **Fase 5 implementada** (2026-11-12; falta tu prueba en el iPhone) — presupuestos con
+avisos, metas de ahorro con aportes y retiros, deudas con cuotas e intereses, planificación
+(capacidad de ahorro y proyecciones), panel de Inicio con esos datos y recordatorios locales.
+Todo calculado en PostgreSQL sobre el motor financiero de la Fase 4 (terminada). Reportes:
+[docs/FASE5.md](docs/FASE5.md) · [docs/FASE4.md](docs/FASE4.md) · [docs/FASE3.md](docs/FASE3.md).
 
 ## Requisitos
 
@@ -27,9 +27,9 @@ PostgreSQL por funciones transaccionales. Reportes: [docs/FASE4.md](docs/FASE4.m
 | `npm run start:clear` | Red local borrando la caché de Metro. |
 | `npm run check` | TypeScript + ESLint + pruebas unitarias + pruebas SQL locales. |
 | `npm test` | Pruebas unitarias (jest-expo). |
-| `npm run test:db` | Migraciones, seguridad RLS y motor financiero en PostgreSQL local. |
+| `npm run test:db` | Migraciones, seguridad RLS, motor financiero y Fase 5 en PostgreSQL local. |
 | `npm run test:db:remote` | Las mismas pruebas SQL en el proyecto real (se deshacen al final). |
-| `npm run test:integration` | Auth, motor financiero y aislamiento entre usuarios por la API real. |
+| `npm run test:integration` | Auth, motor financiero, presupuestos, metas, deudas y aislamiento por la API real. |
 | `npm run db:push` | Aplica las migraciones al proyecto vinculado. |
 | `npm run db:types` | Regenera los tipos desde la base real (se comparan en `typecheck`). |
 | `npm run db:advisors` | Avisos de seguridad y rendimiento de Supabase. |
@@ -52,19 +52,33 @@ Windows): `$env:BROWSER = 'none'; npx.cmd expo login` y abrir a mano el enlace q
 Red local en vez de túnel: el PC cambia entre redes Wi-Fi y tiene Radmin VPN, así que hay
 que fijar la IP del Wi-Fi: `$env:REACT_NATIVE_PACKAGER_HOSTNAME = '<IP>'; npm.cmd start`.
 
-## Pantallas (Fase 2)
+## Pantallas
 
 - **Pestañas:** Inicio · Cuentas · Movimientos · Estadísticas · Asesor IA.
-- **Registro rápido** (botón «+»): ingreso, gasto o transferencia.
-- **Detalle:** cuenta, movimiento, nueva cuenta.
-- **Módulos** (desde el perfil): presupuestos, metas de ahorro, deudas, tarjetas de
-  crédito, calendario financiero, pagos recurrentes, notificaciones y configuración.
+- **Registro rápido** (botón «+»): ingreso, gasto, transferencia o ajuste de saldo.
+- **Detalle:** cuenta, movimiento, presupuesto, meta, deuda.
+- **Módulos** (desde el perfil): presupuestos, metas de ahorro, deudas, planificación,
+  tarjetas de crédito, calendario financiero, pagos recurrentes, avisos y configuración.
+  Calendario y pagos recurrentes siguen en modo demostración.
+
+## Notificaciones en Expo Go
+
+Los recordatorios son **notificaciones locales** (`expo-notifications`): el iPhone las
+programa y las muestra aunque la app esté cerrada; no hay servidor de push ni tokens. Se
+activan en **Avisos → Recordatorios en este iPhone** (ahí se pide el permiso). Las
+notificaciones push remotas requerirían un development build (no se usan). Mientras no
+las pruebes en tu iPhone, se consideran sin verificar.
+
+Variables de entorno: no hay nuevas. Solo `EXPO_PUBLIC_SUPABASE_URL` y
+`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en `.env.local` (ver [docs/SUPABASE.md](docs/SUPABASE.md)).
 
 ## Documentación
 
 - [Arquitectura y decisiones técnicas](docs/ARQUITECTURA.md)
 - [Sistema de diseño e identidad](docs/DISENO.md)
 - [Supabase: proyecto, variables, migraciones, auth y pruebas](docs/SUPABASE.md)
+- [Presupuestos, metas, deudas y cálculos](docs/PRESUPUESTOS_METAS_DEUDAS.md)
+- [Reporte de la Fase 5](docs/FASE5.md)
 - [Reporte de la Fase 4](docs/FASE4.md)
 - [Reporte de la Fase 3](docs/FASE3.md)
 - [Instrucciones para agentes de código](AGENTS.md)
@@ -75,9 +89,9 @@ que fijar la IP del Wi-Fi: `$env:REACT_NATIVE_PACKAGER_HOSTNAME = '<IP>'; npm.cm
 2. Identidad visual y diseño de pantallas — **hecha**
 3. Autenticación y base de datos — **hecha**
 4. Cuentas, movimientos y control de dinero — **hecha**
-5. Movimientos y cálculos financieros
-6. Presupuestos y objetivos de ahorro
-7. Deudas, tarjetas y calendario
+5. Presupuestos, metas de ahorro, deudas y planificación — **implementada** (falta prueba en iPhone)
+6. Presupuestos y objetivos de ahorro (gran parte quedó en la Fase 5)
+7. Deudas, tarjetas y calendario (deudas quedó en la Fase 5)
 8. Estadísticas e informes
 9. Asesor financiero con IA
 10. Importaciones y conexiones bancarias compatibles

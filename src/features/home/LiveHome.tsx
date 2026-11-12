@@ -1,7 +1,8 @@
 /**
  * Inicio con los datos REALES del usuario (Supabase). Mientras no haya cuentas,
  * muestra un estado vacío con la acción principal: agregar la primera cuenta.
- * Análisis, presupuesto y asesor se activan con datos reales en sus fases.
+ * Presupuestos, gasto por categoría, metas, deudas, próximos pagos y capacidad
+ * de ahorro vienen de Supabase (Fase 5). Estadísticas y asesor, en sus fases.
  */
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
@@ -24,6 +25,7 @@ import { MONTHS, capitalize, nowInBogota, parseISO, toISO } from '@/lib/dates';
 import { useAppTheme } from '@/theme';
 
 import { HomeHeader } from './HomeSections';
+import { PlanningSections } from './PlanningSections';
 
 const enter = (order: number) => FadeInDown.delay(80 + order * 70).duration(420);
 
@@ -96,7 +98,7 @@ export function LiveHome() {
                 netWorth={summary.netWorth}
                 available={summary.available}
                 investments={summary.invested}
-                debts={summary.cardDebt}
+                debts={summary.totalDebt}
                 breakdown={{ banks: summary.banks, wallets: summary.wallets, cash: summary.cash }}
               />
             ) : null}
@@ -121,6 +123,8 @@ export function LiveHome() {
               />
             </View>
           </Animated.View>
+
+          <PlanningSections />
 
           <Animated.View entering={enter(3)}>
             <SectionHeader title="Mis cuentas" actionLabel="Ver todas" onAction={() => router.navigate('/accounts')} />
@@ -166,7 +170,7 @@ export function LiveHome() {
           <FinancialCard tone="muted" padding={spacing.lg}>
             <AppText variant="subhead">Próximamente con tus datos</AppText>
             <AppText variant="footnote" color="textSecondary" style={{ marginTop: spacing.xs }}>
-              Estadísticas, presupuestos, metas y el asesor se activan con tus datos reales en las próximas fases.
+              Las estadísticas avanzadas y el asesor se activan con tus datos reales en las próximas fases.
             </AppText>
             <AppText variant="subhead" color="primary" style={{ marginTop: spacing.md }} onPress={() => setMode('demo')}>
               Ver la demostración

@@ -27,6 +27,7 @@ import {
   getStats,
   type StatsPeriod,
 } from '@/features/demo/selectors';
+import { usePendingAlerts } from './PlanningSections';
 import { greeting, nowInBogota } from '@/lib/dates';
 import { formatPercent } from '@/lib/money';
 import { palette, useAppTheme } from '@/theme';
@@ -41,8 +42,9 @@ export function HomeHeader() {
   const { colors, scheme, spacing } = useAppTheme();
   const { profile } = useAuth();
   const { mode } = useFinanceData();
-  // En modo real todavía no hay avisos (llegan en la Fase 7).
-  const unread = mode === 'demo' ? DEMO_NOTIFICATIONS.filter((notification) => !notification.read).length : 0;
+  // Datos reales: avisos de presupuesto sin ver y cuotas vencidas.
+  const pending = usePendingAlerts();
+  const unread = mode === 'demo' ? DEMO_NOTIFICATIONS.filter((notification) => !notification.read).length : pending;
   const { hour } = nowInBogota();
 
   return (

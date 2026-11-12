@@ -13,8 +13,9 @@ import { DEMO_NOTIFICATIONS, DEMO_TODAY } from '@/features/demo/data';
 import { formatDayHeading } from '@/lib/dates';
 import { haptics } from '@/lib/haptics';
 import { resolveTone, useAppTheme, type Tone } from '@/theme';
-import { LiveGate } from '@/features/data/ComingSoon';
 import type { AppNotification, IconName } from '@/types/finance';
+import { useFinanceData } from '@/features/data/FinanceDataProvider';
+import { AlertsScreen } from '@/features/planning/screens/AlertsScreen';
 
 const KIND: Record<AppNotification['kind'], { icon: IconName; tone: Tone }> = {
   budget: { icon: 'chart.pie.fill', tone: 'amber' },
@@ -121,15 +122,8 @@ const styles = StyleSheet.create({
   markAll: { minHeight: 44, justifyContent: 'center' },
 });
 
+/** Datos reales por defecto; la versión de ejemplo solo en modo demostración. */
 export default function NotificationsRoute() {
-  return (
-    <LiveGate
-      title="Notificaciones"
-      phase="Fase 7"
-      description="Alertas de presupuesto, vencimientos y metas basadas en tus datos."
-      icon="bell.fill"
-      layout="stack"
-      demo={<NotificationsScreen />}
-    />
-  );
+  const { mode } = useFinanceData();
+  return mode === 'demo' ? <NotificationsScreen /> : <AlertsScreen />;
 }

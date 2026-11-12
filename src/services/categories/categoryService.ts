@@ -18,12 +18,29 @@ export async function fetchCategories(): Promise<Category[]> {
   return data.map(mapCategory);
 }
 
-export type CategoryInput = { name: string; kind: CategoryKind; icon: IconName; tone: Tone };
+export type CategoryInput = {
+  name: string;
+  kind: CategoryKind;
+  icon: IconName;
+  tone: Tone;
+  /** Solo gastos: fijo (se repite cada mes) y esencial (planificación). */
+  isFixed?: boolean;
+  isEssential?: boolean;
+};
 
 export async function createCategory(userId: string, input: CategoryInput): Promise<Category> {
   const { data, error } = await supabase
     .from('categories')
-    .insert({ user_id: userId, name: input.name.trim(), type: input.kind, icon: input.icon, color: input.tone, is_default: false })
+    .insert({
+      user_id: userId,
+      name: input.name.trim(),
+      type: input.kind,
+      icon: input.icon,
+      color: input.tone,
+      is_default: false,
+      is_fixed: input.kind === 'expense' && Boolean(input.isFixed),
+      is_essential: input.kind === 'expense' && Boolean(input.isEssential),
+    })
     .select('*')
     .single();
   if (error) throw financeFailure('categories.create', error);
@@ -34,7 +51,13 @@ export async function createCategory(userId: string, input: CategoryInput): Prom
 export async function updateCategory(categoryId: string, input: Omit<CategoryInput, 'kind'>): Promise<void> {
   const { error } = await supabase
     .from('categories')
-    .update({ name: input.name.trim(), icon: input.icon, color: input.tone })
+    .update({
+      name: input.name.trim(),
+      icon: input.icon,
+      color: input.tone,
+      ...(input.isFixed === undefined ? {} : { is_fixed: input.isFixed }),
+      ...(input.isEssential === undefined ? {} : { is_essential: input.isEssential }),
+    })
     .eq('id', categoryId);
   if (error) throw financeFailure('categories.update', error);
 }

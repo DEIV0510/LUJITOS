@@ -2,7 +2,7 @@
 import { INSTITUTIONS } from '@/constants/institutions';
 import { fromDb } from '@/lib/money';
 import { tones, type Tone } from '@/theme/colors';
-import type { Account, Category, IconName, InstitutionId, RegistrationMethod, Transaction } from '@/types/finance';
+import type { Account, Category, IconName, InstitutionId, RegistrationMethod, Transaction, TransactionPurpose } from '@/types/finance';
 import type { AccountBalanceRow, AccountRow, CategoryRow, ConnectionTypeDb, TransactionRow } from '@/types/database';
 
 const METHOD: Record<ConnectionTypeDb, RegistrationMethod> = {
@@ -69,8 +69,12 @@ export function mapCategory(row: CategoryRow): Category {
     slug: row.slug,
     isDefault: row.is_default,
     archivedAt: row.archived_at,
+    isFixed: row.is_fixed,
+    isEssential: row.is_essential,
   };
 }
+
+const PURPOSES: TransactionPurpose[] = ['debt_installment', 'debt_extra', 'debt_interest', 'goal_contribution', 'goal_withdrawal'];
 
 export function mapTransaction(row: TransactionRow): Transaction {
   return {
@@ -88,5 +92,6 @@ export function mapTransaction(row: TransactionRow): Transaction {
     voidedAt: row.deleted_at,
     voidReason: row.void_reason,
     createdAt: row.created_at,
+    purpose: PURPOSES.includes(row.purpose as TransactionPurpose) ? (row.purpose as TransactionPurpose) : null,
   };
 }

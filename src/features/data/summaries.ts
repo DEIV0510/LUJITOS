@@ -74,10 +74,14 @@ export function summaryFromAccounts(accounts: Account[], transactions: Transacti
   const banks = of('banks');
   const wallets = of('wallets');
   const cash = of('cash');
+  const loans = active.filter((account) => account.kind === 'loan');
   const month = inMonth(
     transactions.filter((t) => !t.voidedAt),
     monthStartKey,
   );
+  const { income, expense } = totalsOf(month);
+  const cardDebt = sum(cards.map((card) => Math.max(-card.balance, 0)));
+  const loanDebt = sum(loans.map((loan) => Math.max(-loan.balance, 0)));
   return {
     available: banks + wallets + cash,
     banks,
@@ -85,14 +89,21 @@ export function summaryFromAccounts(accounts: Account[], transactions: Transacti
     cash,
     invested: of('investments'),
     other: of('other'),
-    cardDebt: sum(cards.map((card) => Math.max(-card.balance, 0))),
+    cardDebt,
+    loanDebt,
+    totalDebt: cardDebt + loanDebt,
+    assets: sum(active.map((account) => Math.max(account.balance, 0))),
+    liabilities: sum(active.map((account) => Math.max(-account.balance, 0))),
     creditLimit: sum(cards.map((card) => card.creditLimit ?? 0)),
     creditAvailable: sum(cards.filter((card) => card.creditLimit).map((card) => Math.max((card.creditLimit ?? 0) + card.balance, 0))),
     netWorth: sum(active.map((account) => account.balance)),
-    accounts: active.length,
+    accounts: active.length - loans.length,
+    debts: loans.length,
     monthStart: `${monthStartKey}-01`,
-    monthIncome: totalsOf(month).income,
-    monthExpense: totalsOf(month).expense,
+    monthIncome: income,
+    monthExpense: expense,
+    monthSavings: income - expense,
+    savingsRate: income > 0 ? Math.round(((income - expense) * 10000) / income) / 100 : null,
   };
 }
 

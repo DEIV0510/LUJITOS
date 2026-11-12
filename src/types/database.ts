@@ -16,6 +16,7 @@ export type AccountTypeDb =
   | 'savings'
   | 'checking'
   | 'credit_card'
+  | 'loan'
   | 'investment'
   | 'cdt'
   | 'investment_fund'
@@ -74,6 +75,9 @@ export type CategoryRow = {
   slug: string | null;
   created_at: string;
   archived_at: string | null;
+  /** Gasto fijo (se repite cada mes) y gasto esencial (planificación). */
+  is_fixed: boolean;
+  is_essential: boolean;
 };
 
 export type TransactionRow = Timestamps & {
@@ -94,6 +98,8 @@ export type TransactionRow = Timestamps & {
   deleted_at: string | null;
   void_reason: string | null;
   client_request_id: string | null;
+  /** debt_installment, debt_extra, debt_interest, goal_contribution, goal_withdrawal (solo etiqueta). */
+  purpose: string | null;
 };
 
 export type AccountSnapshotRow = {
@@ -141,6 +147,154 @@ export type AuditLogRow = {
   created_at: string;
 };
 
+// ---------- Fase 5: presupuestos, metas y deudas ----------
+// Las columnas de texto con lista cerrada (period, kind, status…) llegan como
+// string; los mapeadores (services/planning/mappers.ts) las convierten.
+
+export type BudgetRow = Timestamps & {
+  id: string;
+  user_id: string;
+  /** NULL = presupuesto general (todos los gastos). */
+  category_id: string | null;
+  name: string | null;
+  limit_amount: number;
+  /** weekly | monthly | yearly | custom */
+  period: string;
+  start_date: string;
+  end_date: string | null;
+  alert_thresholds: number[];
+  archived_at: string | null;
+  client_request_id: string | null;
+};
+
+export type BudgetAlertRow = {
+  id: string;
+  user_id: string;
+  budget_id: string;
+  period_start: string;
+  /** threshold | exceeded */
+  kind: string;
+  threshold: number;
+  spent: number;
+  limit_amount: number;
+  created_at: string;
+  seen_at: string | null;
+};
+
+export type BudgetStatusRow = {
+  budget_id: string;
+  user_id: string;
+  period_start: string;
+  period_end: string;
+  limit_amount: number;
+  spent: number;
+  available: number;
+  percent_used: number;
+  /** active | exceeded | scheduled | ended | archived */
+  status: string;
+  days_left: number;
+  previous_period_start: string | null;
+  previous_spent: number | null;
+};
+
+export type SavingsGoalRow = Timestamps & {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  kind: string;
+  target_amount: number;
+  initial_saved: number;
+  start_date: string;
+  target_date: string | null;
+  account_id: string | null;
+  color: string | null;
+  icon: string | null;
+  archived_at: string | null;
+  client_request_id: string | null;
+};
+
+export type SavingsGoalMovementRow = Timestamps & {
+  id: string;
+  user_id: string;
+  goal_id: string;
+  /** contribution | withdrawal */
+  kind: string;
+  amount: number;
+  movement_date: string;
+  note: string | null;
+  transaction_id: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+  client_request_id: string | null;
+};
+
+export type SavingsGoalProgressRow = {
+  goal_id: string;
+  user_id: string;
+  saved: number;
+  contributed: number;
+  withdrawn: number;
+  remaining: number;
+  percent: number;
+  exceeded_by: number;
+  days_left: number | null;
+  /** active | completed | overdue | archived */
+  status: string;
+  monthly_needed: number | null;
+  weekly_needed: number | null;
+  daily_needed: number | null;
+  unassigned: boolean;
+  account_balance: number | null;
+  account_allocated: number | null;
+  movement_count: number;
+  last_movement_date: string | null;
+};
+
+export type DebtRow = Timestamps & {
+  id: string;
+  user_id: string;
+  /** Cuenta de tipo loan con el saldo de la deuda. */
+  account_id: string;
+  kind: string;
+  creditor: string | null;
+  original_amount: number;
+  /** Porcentaje (1.5 = 1,5 %). */
+  interest_rate: number | null;
+  /** monthly | annual */
+  interest_period: string | null;
+  start_date: string;
+  due_date: string | null;
+  installment_amount: number | null;
+  /** none | weekly | biweekly | monthly | quarterly | yearly */
+  frequency: string;
+  first_payment_date: string | null;
+  payment_account_id: string | null;
+  description: string | null;
+  client_request_id: string | null;
+};
+
+export type DebtOverviewRow = {
+  debt_id: string;
+  user_id: string;
+  account_id: string;
+  outstanding: number;
+  credit_balance: number;
+  initial_outstanding: number;
+  paid_before: number;
+  total_paid: number;
+  installments_paid: number;
+  interest_registered: number;
+  disbursed: number;
+  last_payment_date: string | null;
+  percent_paid: number;
+  next_payment_date: string | null;
+  days_to_next_payment: number | null;
+  days_to_due: number | null;
+  /** active | paid | overdue | archived */
+  status: string;
+};
+
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 export type Database = {
@@ -162,7 +316,10 @@ export type Database = {
       };
       categories: {
         Row: CategoryRow;
-        Insert: Optional<CategoryRow, 'id' | 'user_id' | 'icon' | 'color' | 'is_default' | 'slug' | 'created_at' | 'archived_at'>;
+        Insert: Optional<
+          CategoryRow,
+          'id' | 'user_id' | 'icon' | 'color' | 'is_default' | 'slug' | 'created_at' | 'archived_at' | 'is_fixed' | 'is_essential'
+        >;
         Update: Partial<CategoryRow>;
         Relationships: [];
       };
@@ -192,9 +349,18 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      // Fase 5: escrituras solo por RPC. De los avisos, la app solo marca seen_at.
+      budgets: { Row: BudgetRow; Insert: never; Update: never; Relationships: [] };
+      budget_alerts: { Row: BudgetAlertRow; Insert: never; Update: { seen_at?: string | null }; Relationships: [] };
+      savings_goals: { Row: SavingsGoalRow; Insert: never; Update: never; Relationships: [] };
+      savings_goal_movements: { Row: SavingsGoalMovementRow; Insert: never; Update: never; Relationships: [] };
+      debts: { Row: DebtRow; Insert: never; Update: never; Relationships: [] };
     };
     Views: {
       account_balances: { Row: AccountBalanceRow; Relationships: [] };
+      budget_status: { Row: BudgetStatusRow; Relationships: [] };
+      savings_goal_progress: { Row: SavingsGoalProgressRow; Relationships: [] };
+      debt_overview: { Row: DebtOverviewRow; Relationships: [] };
     };
     // Funciones RPC del motor financiero (supabase/migrations/20261112090100_finance_engine.sql).
     Functions: {
@@ -285,6 +451,176 @@ export type Database = {
       account_balance_history: {
         Args: { p_account_id: string; p_from: string; p_to: string };
         Returns: { day: string; balance: number }[];
+      };
+      // ---------- Fase 5 (supabase/migrations/20261112150100_budgets_goals_debts.sql) ----------
+      create_budget: {
+        Args: {
+          p_category_id: string | null;
+          p_limit_amount: number;
+          p_period: string;
+          p_start_date?: string | null;
+          p_end_date?: string | null;
+          p_name?: string | null;
+          p_alert_thresholds?: number[] | null;
+          p_request_id?: string | null;
+        };
+        Returns: string;
+      };
+      update_budget: {
+        Args: {
+          p_budget_id: string;
+          p_category_id: string | null;
+          p_limit_amount: number;
+          p_period: string;
+          p_start_date: string | null;
+          p_end_date: string | null;
+          p_name: string | null;
+          p_alert_thresholds: number[] | null;
+        };
+        Returns: string;
+      };
+      archive_budget: { Args: { p_budget_id: string; p_archived?: boolean }; Returns: undefined };
+      delete_budget: { Args: { p_budget_id: string }; Returns: undefined };
+      budget_history: {
+        Args: { p_budget_id: string; p_periods?: number };
+        Returns: { period_start: string; period_end: string; spent: number; limit_amount: number; percent_used: number }[];
+      };
+      create_savings_goal: {
+        Args: {
+          p_name: string;
+          p_target_amount: number;
+          p_initial_saved?: number;
+          p_target_date?: string | null;
+          p_start_date?: string | null;
+          p_kind?: string;
+          p_account_id?: string | null;
+          p_description?: string | null;
+          p_color?: string | null;
+          p_icon?: string | null;
+          p_request_id?: string | null;
+        };
+        Returns: string;
+      };
+      update_savings_goal: {
+        Args: {
+          p_goal_id: string;
+          p_name: string;
+          p_target_amount: number;
+          p_initial_saved: number;
+          p_target_date: string | null;
+          p_start_date: string | null;
+          p_kind: string;
+          p_account_id: string | null;
+          p_description: string | null;
+          p_color: string | null;
+          p_icon: string | null;
+        };
+        Returns: string;
+      };
+      archive_savings_goal: { Args: { p_goal_id: string; p_archived?: boolean }; Returns: undefined };
+      delete_savings_goal: { Args: { p_goal_id: string }; Returns: undefined };
+      add_goal_movement: {
+        Args: {
+          p_goal_id: string;
+          p_kind: string;
+          p_amount: number;
+          p_movement_date?: string | null;
+          p_note?: string | null;
+          p_account_id?: string | null;
+          p_request_id?: string | null;
+          p_allow_negative?: boolean;
+        };
+        Returns: string;
+      };
+      update_goal_movement: {
+        Args: {
+          p_movement_id: string;
+          p_amount: number;
+          p_movement_date?: string | null;
+          p_note?: string | null;
+          p_allow_negative?: boolean;
+        };
+        Returns: string;
+      };
+      void_goal_movement: { Args: { p_movement_id: string; p_reason?: string | null }; Returns: undefined };
+      create_debt: {
+        Args: {
+          p_name: string;
+          p_original_amount: number;
+          p_outstanding: number;
+          p_kind?: string;
+          p_creditor?: string | null;
+          p_interest_rate?: number | null;
+          p_interest_period?: string | null;
+          p_start_date?: string | null;
+          p_due_date?: string | null;
+          p_installment_amount?: number | null;
+          p_frequency?: string;
+          p_first_payment_date?: string | null;
+          p_payment_account_id?: string | null;
+          p_description?: string | null;
+          p_color?: string | null;
+          p_request_id?: string | null;
+        };
+        Returns: string;
+      };
+      update_debt: {
+        Args: {
+          p_debt_id: string;
+          p_name: string;
+          p_original_amount: number;
+          p_initial_outstanding: number;
+          p_kind: string;
+          p_creditor: string | null;
+          p_interest_rate: number | null;
+          p_interest_period: string | null;
+          p_start_date: string | null;
+          p_due_date: string | null;
+          p_installment_amount: number | null;
+          p_frequency: string;
+          p_first_payment_date: string | null;
+          p_payment_account_id: string | null;
+          p_description: string | null;
+          p_color: string | null;
+        };
+        Returns: string;
+      };
+      archive_debt: { Args: { p_debt_id: string; p_archived?: boolean; p_force?: boolean }; Returns: undefined };
+      delete_debt: { Args: { p_debt_id: string }; Returns: undefined };
+      register_debt_payment: {
+        Args: {
+          p_debt_id: string;
+          p_kind: string;
+          p_amount: number;
+          p_account_id?: string | null;
+          p_interest_portion?: number;
+          p_payment_date?: string | null;
+          p_notes?: string | null;
+          p_request_id?: string | null;
+          p_allow_negative?: boolean;
+          p_allow_overpay?: boolean;
+        };
+        Returns: Json;
+      };
+      monthly_flows: {
+        Args: { p_months?: number };
+        Returns: {
+          month_start: string;
+          income: number;
+          expense: number;
+          fixed_expense: number;
+          essential_expense: number;
+          movements: number;
+        }[];
+      };
+      spending_by_category: {
+        Args: { p_from: string; p_to: string };
+        Returns: { category_id: string; total: number; movements: number }[];
+      };
+      planning_snapshot: { Args: Record<string, never>; Returns: Json };
+      budget_period_bounds: {
+        Args: { p_period: string; p_start: string; p_end: string; p_ref: string };
+        Returns: { period_start: string; period_end: string }[];
       };
       transaction_effect: {
         Args: {

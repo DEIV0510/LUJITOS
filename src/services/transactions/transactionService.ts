@@ -35,7 +35,12 @@ export type TransactionInput = {
 };
 
 /** Confirmaciones del usuario ante las advertencias del servidor. */
-export type WriteOptions = { allowNegative?: boolean; allowDuplicate?: boolean };
+export type WriteOptions = {
+  allowNegative?: boolean;
+  allowDuplicate?: boolean;
+  /** Pago mayor que lo que se debe (queda saldo a favor). */
+  allowOverpay?: boolean;
+};
 
 function movementArgs(input: TransactionInput) {
   const isTransfer = input.type === 'transfer';

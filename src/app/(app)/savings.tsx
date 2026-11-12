@@ -12,8 +12,9 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DEMO_GOALS } from '@/features/demo/data';
 import { getGoalPlan } from '@/features/demo/selectors';
 import { formatPercent } from '@/lib/money';
-import { LiveGate } from '@/features/data/ComingSoon';
 import { useAppTheme } from '@/theme';
+import { useFinanceData } from '@/features/data/FinanceDataProvider';
+import { LiveSavingsScreen } from '@/features/planning/screens/GoalScreens';
 
 const PRIORITY_ORDER = { alta: 0, media: 1, baja: 2 } as const;
 
@@ -58,7 +59,7 @@ function SavingsScreen() {
       <SecondaryButton
         label="Nueva meta"
         icon="plus"
-        onPress={() => Alert.alert('Nueva meta', 'Crear metas y registrar aportes se activa en la Fase 6.')}
+        onPress={() => Alert.alert('Nueva meta', 'Estás en modo demostración: nada se guarda. Desactívalo en Configuración para crear tus metas.')}
       />
     </Screen>
   );
@@ -69,15 +70,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
 });
 
+/** Datos reales por defecto; la versión de ejemplo solo en modo demostración. */
 export default function SavingsRoute() {
-  return (
-    <LiveGate
-      title="Metas de ahorro"
-      phase="Fase 6"
-      description="Crea metas con fecha límite y LUJITOS te dirá cuánto separar por semana y por mes."
-      icon="target"
-      layout="stack"
-      demo={<SavingsScreen />}
-    />
-  );
+  const { mode } = useFinanceData();
+  return mode === 'demo' ? <SavingsScreen /> : <LiveSavingsScreen />;
 }
