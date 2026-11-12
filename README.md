@@ -3,7 +3,7 @@
 Gestor de finanzas personales para iPhone. Colombia, español, pesos colombianos (COP),
 zona horaria America/Bogota. **TU DINERO, BAJO CONTROL.**
 
-Estado: **Fase 4** (2026-11-11) — motor financiero real: cuentas de todo tipo (bancos,
+Estado: **Fase 4 terminada** (2026-11-12) — motor financiero real: cuentas de todo tipo (bancos,
 billeteras, efectivo, inversiones, CDT, tarjetas con cupo), ingresos, gastos, transferencias y
 ajustes de saldo; editar y anular con trazabilidad; saldos, patrimonio y resumen calculados en
 PostgreSQL por funciones transaccionales. Reportes: [docs/FASE4.md](docs/FASE4.md) ·
@@ -74,7 +74,7 @@ que fijar la IP del Wi-Fi: `$env:REACT_NATIVE_PACKAGER_HOSTNAME = '<IP>'; npm.cm
 1. Configuración del proyecto y entorno — **hecha**
 2. Identidad visual y diseño de pantallas — **hecha**
 3. Autenticación y base de datos — **hecha**
-4. Cuentas, movimientos y control de dinero — **en curso**
+4. Cuentas, movimientos y control de dinero — **hecha**
 5. Movimientos y cálculos financieros
 6. Presupuestos y objetivos de ahorro
 7. Deudas, tarjetas y calendario

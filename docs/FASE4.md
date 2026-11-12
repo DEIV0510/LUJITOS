@@ -1,8 +1,12 @@
 # LUJITOS — Reporte de la Fase 4
 
 Sistema real de cuentas, movimientos y control de dinero. Fecha: 2026-11-11.
-**Estado:** implementada y probada (SQL local y en tu proyecto real, API real y pantallas en
-pruebas). **Falta la prueba en tu iPhone** (sección 10).
+**Estado: terminada** (2026-11-12). Probada con SQL local y en el proyecto real, por la API real y
+con las pantallas dibujadas en pruebas. En el iPhone el usuario la usó y confirmó que todo
+funcionó; en la base quedaron un ingreso y dos gastos registrados con la app nueva y todos los
+saldos coinciden al recalcularlos. Transferencias, tarjetas, edición, anulación, ajuste y
+categorías propias no se usaron aún en el iPhone: están cubiertos por las pruebas automáticas
+contra la base real (secciones 7 y 8).
 
 ## Revisión de la Fase 3 (antes de empezar)
 
