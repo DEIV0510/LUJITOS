@@ -19,7 +19,15 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const migrationsDir = join(root, 'supabase', 'migrations');
 const stub = await readFile(join(root, 'supabase', 'tests', 'local', 'supabase-stub.sql'), 'utf8');
-const testSql = await readFile(join(root, 'supabase', 'tests', 'rls_security.test.sql'), 'utf8');
+const TEST_FILES = [
+  ['Pruebas de seguridad e integridad (RLS)', 'rls_security.test.sql'],
+  ['Pruebas del motor financiero (Fase 4)', 'finance_engine.test.sql'],
+];
+const tests = await Promise.all(
+  TEST_FILES.map(async ([title, file]) => ({ title, sql: await readFile(join(root, 'supabase', 'tests', file), 'utf8') })),
+);
+/** Categorías del sistema: 23 de la Fase 3 + «Intereses y comisiones» (Fase 4). */
+const SYSTEM_CATEGORIES = 24;
 const migrations = (await readdir(migrationsDir)).filter((file) => file.endsWith('.sql')).sort();
 const seedFile = migrations.find((file) => file.endsWith('_default_categories.sql'));
 if (!seedFile) {
@@ -64,21 +72,24 @@ for (const variant of variants) {
   for (const file of migrations) {
     await run(`Migración ${file}`, await readFile(join(migrationsDir, file), 'utf8'));
   }
-  if (verbose) console.log('\nPruebas de seguridad e integridad:');
-  const results = await run(null, testSql);
-  const final = results.flatMap((result) => result.rows ?? []).find((row) => row.resultado);
-  console.log(`${passed} comprobaciones superadas.`);
-  if (!final) {
-    console.error('✗ La prueba no llegó al final.');
-    process.exit(1);
+  for (const test of tests) {
+    passed = 0;
+    if (verbose) console.log(`\n${test.title}:`);
+    const results = await run(null, test.sql);
+    const final = results.flatMap((result) => result.rows ?? []).find((row) => row.resultado);
+    console.log(`${passed} comprobaciones superadas.`);
+    if (!final) {
+      console.error('✗ La prueba no llegó al final.');
+      process.exit(1);
+    }
+    console.log(final.resultado);
   }
-  console.log(final.resultado);
 
   // La semilla de categorías se puede reaplicar sin duplicar.
   await run('Las categorías del sistema no se duplican al reaplicar la semilla', await readFile(join(migrationsDir, seedFile), 'utf8'));
   const { rows } = await db.query('select count(*)::int as n from public.categories where user_id is null');
-  if (rows[0].n !== 23) {
-    console.error(`✗ Se esperaban 23 categorías del sistema y hay ${rows[0].n}`);
+  if (rows[0].n !== SYSTEM_CATEGORIES) {
+    console.error(`✗ Se esperaban ${SYSTEM_CATEGORIES} categorías del sistema y hay ${rows[0].n}`);
     process.exit(1);
   }
   await db.close();

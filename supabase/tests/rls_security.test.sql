@@ -22,6 +22,8 @@ begin
 end;
 $$;
 grant usage on schema lujitos_tests to authenticated, anon;
+create table lujitos_tests.ids (k text primary key, v uuid);
+grant all on lujitos_tests.ids to authenticated;
 grant execute on function lujitos_tests.check(boolean, text) to authenticated, anon;
 
 -- Usuarios ficticios (dominio .test reservado: nunca recibe correos).
@@ -53,8 +55,8 @@ select lujitos_tests.check(
   'El registro crea las preferencias');
 select lujitos_tests.check(
   (select count(*) from public.categories where user_id is null and type = 'income') = 8
-  and (select count(*) from public.categories where user_id is null and type = 'expense') = 15,
-  'Existen 8 categorías de ingreso y 15 de gasto del sistema');
+  and (select count(*) from public.categories where user_id is null and type = 'expense') = 16,
+  'Existen 8 categorías de ingreso y 16 de gasto del sistema (incluye intereses y comisiones)');
 
 -- Auditoría de Auth (estos cambios los hace el servicio de Auth de Supabase)
 select lujitos_tests.check(
@@ -72,17 +74,15 @@ select lujitos_tests.check(
 -- ---------------------------------------------------------------------
 -- 2. Usuario A: sus datos y cálculo de saldos
 -- ---------------------------------------------------------------------
+-- Los datos de prueba se cargan como servicio (desde la Fase 4 la app solo
+-- escribe cuentas y movimientos por las funciones RPC; ver finance_engine.test.sql).
 select set_config('request.jwt.claims', '{"sub": "11111111-1111-4111-8111-111111111111", "role": "authenticated"}', true);
-set local role authenticated;
 
 insert into public.accounts (id, name, institution, account_type, initial_balance) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 'Ahorros A', 'bancolombia', 'savings', 1000000),
   ('aaaaaaaa-0000-4000-8000-000000000002', 'Nequi A', 'nequi', 'digital_wallet', 200000),
   ('aaaaaaaa-0000-4000-8000-000000000003', 'Tarjeta A', 'bancolombia', 'credit_card', 0);
 
-select lujitos_tests.check(
-  (select bool_and(user_id = '11111111-1111-4111-8111-111111111111') from public.accounts),
-  'user_id se asigna solo con auth.uid()');
 
 insert into public.transactions (id, account_id, destination_account_id, category_id, type, amount, adjustment_sign, description) values
   ('aaaaaaaa-0000-4000-8000-0000000000e1', 'aaaaaaaa-0000-4000-8000-000000000001', null,
@@ -97,6 +97,23 @@ insert into public.transactions (id, account_id, destination_account_id, categor
    null, 'transfer', 150000, null, 'Pago de la tarjeta'),
   ('aaaaaaaa-0000-4000-8000-0000000000e6', 'aaaaaaaa-0000-4000-8000-000000000001', null,
    null, 'adjustment', 50000, -1, 'Ajuste de saldo');
+
+set local role authenticated;
+select lujitos_tests.check(
+  (select bool_and(user_id = '11111111-1111-4111-8111-111111111111') from public.accounts),
+  'A ve solo sus cuentas');
+do $$
+begin
+  insert into public.accounts (name, account_type) values ('Directa', 'cash');
+  raise exception 'PRUEBA FALLIDA: la app creó una cuenta sin pasar por create_account';
+exception when insufficient_privilege then raise notice 'ok - La app no escribe cuentas directamente (solo por RPC)';
+end $$;
+do $$
+begin
+  update public.transactions set amount = 1 where id = 'aaaaaaaa-0000-4000-8000-0000000000e1';
+  raise exception 'PRUEBA FALLIDA: la app editó un movimiento sin pasar por update_transaction';
+exception when insufficient_privilege then raise notice 'ok - La app no edita movimientos directamente (solo por RPC)';
+end $$;
 
 select lujitos_tests.check(
   (select balance from public.account_balances where account_id = 'aaaaaaaa-0000-4000-8000-000000000001') = 3000000,
@@ -115,8 +132,8 @@ select lujitos_tests.check(
   and (select sum(amount) from public.transactions where type = 'expense' and deleted_at is null) = 480000,
   'Ingresos 2.500.000 y gastos 480.000: las transferencias no suman como ingreso ni gasto');
 
--- Borrado lógico
-update public.transactions set deleted_at = now() where id = 'aaaaaaaa-0000-4000-8000-0000000000e3';
+-- Anulación (borrado lógico) por RPC
+select public.void_transaction('aaaaaaaa-0000-4000-8000-0000000000e3', 'Prueba de anulación');
 select lujitos_tests.check(
   (select balance from public.account_balances where account_id = 'aaaaaaaa-0000-4000-8000-000000000002') = 500000,
   'Un movimiento marcado como borrado deja de afectar el saldo');
@@ -140,7 +157,9 @@ exception when insufficient_privilege then
   raise notice 'ok - El correo del perfil no se edita desde la app';
 end $$;
 
--- Restricciones de integridad
+-- Restricciones de integridad de la tabla (como servicio: las RPC validan antes,
+-- pero la base las impone por cualquier camino)
+reset role;
 do $$
 begin
   insert into public.transactions (account_id, category_id, type, amount)
@@ -198,6 +217,7 @@ begin
   raise exception 'PRUEBA FALLIDA: ajuste sin dirección';
 exception when check_violation then raise notice 'ok - Un ajuste necesita dirección (+/−)';
 end $$;
+set local role authenticated;
 do $$
 begin
   delete from public.transactions where id = 'aaaaaaaa-0000-4000-8000-0000000000e1';
@@ -211,17 +231,17 @@ begin
 exception when insufficient_privilege then raise notice 'ok - Las cuentas se archivan, no se borran';
 end $$;
 
--- Archivar cuenta
-update public.accounts set is_active = false where id = 'aaaaaaaa-0000-4000-8000-000000000002';
+-- Archivar cuenta (tiene saldo: se confirma con p_force)
+select public.archive_account('aaaaaaaa-0000-4000-8000-000000000002', true);
 select lujitos_tests.check(
   (select archived_at is not null from public.accounts where id = 'aaaaaaaa-0000-4000-8000-000000000002'),
   'Archivar una cuenta registra la fecha');
 do $$
 begin
-  insert into public.transactions (account_id, category_id, type, amount)
-  values ('aaaaaaaa-0000-4000-8000-000000000002', (select id from public.categories where slug = 'food'), 'expense', 1000);
+  perform public.create_transaction('expense', 1000, 'aaaaaaaa-0000-4000-8000-000000000002',
+    p_category_id => (select id from public.categories where slug = 'food'));
   raise exception 'PRUEBA FALLIDA: movimiento nuevo en cuenta archivada';
-exception when check_violation then raise notice 'ok - No se registran movimientos en cuentas archivadas';
+exception when sqlstate 'LJ006' then raise notice 'ok - No se registran movimientos en cuentas archivadas';
 end $$;
 select lujitos_tests.check(
   (select balance from public.account_balances where account_id = 'aaaaaaaa-0000-4000-8000-000000000002') = 500000,
@@ -237,9 +257,9 @@ select lujitos_tests.check(
   (select count(*) from public.audit_logs where action = 'transaction.created') = 6,
   'Auditoría: cada movimiento guardado queda anotado (los rechazados no)');
 select lujitos_tests.check(
-  (select changed_fields = '{deleted_at}' and entity_id = 'aaaaaaaa-0000-4000-8000-0000000000e3'
+  (select changed_fields = '{deleted_at,void_reason}' and entity_id = 'aaaaaaaa-0000-4000-8000-0000000000e3'
      from public.audit_logs where action = 'transaction.deleted'),
-  'Auditoría: el borrado lógico de un movimiento queda anotado');
+  'Auditoría: la anulación de un movimiento queda anotada (con su motivo, sin el texto)');
 select lujitos_tests.check(
   (select count(*) from public.audit_logs
     where action = 'account.archived' and entity_id = 'aaaaaaaa-0000-4000-8000-000000000002') = 1,
@@ -253,7 +273,7 @@ select lujitos_tests.check(
 select lujitos_tests.check(
   not exists (
     select 1 from public.audit_logs l, jsonb_each_text(to_jsonb(l)) f
-     where f.value ~ '(Nómina|Mercado|Ana|2500000|80000|lujitos\.test|hash-de-prueba)'),
+     where f.value ~ '(Nómina|Mercado|Ana|2500000|80000|lujitos\.test|hash-de-prueba|Prueba de anulación)'),
   'Auditoría: no guarda montos, descripciones, nombres, correos ni contraseñas');
 do $$
 begin
@@ -285,18 +305,44 @@ select lujitos_tests.check((select count(*) from public.account_balances) = 0, '
 select lujitos_tests.check((select count(*) from public.profiles) = 1, 'B solo ve su propio perfil');
 select lujitos_tests.check((select count(*) from public.user_preferences) = 1, 'B solo ve sus preferencias');
 select lujitos_tests.check((select count(*) from public.categories where user_id is not null) = 0, 'B no ve las categorías privadas de A');
-select lujitos_tests.check((select count(*) from public.categories where user_id is null) = 23, 'B sí ve las categorías del sistema');
+select lujitos_tests.check((select count(*) from public.categories where user_id is null) = 24, 'B sí ve las categorías del sistema');
 select lujitos_tests.check(
   (select count(*) from public.audit_logs) = 1
   and (select bool_and(user_id = '22222222-2222-4222-8222-222222222222') from public.audit_logs),
   'B solo ve su propia auditoría (no la de A)');
 
-with changed as (
-  update public.accounts set name = 'Intruso' where id = 'aaaaaaaa-0000-4000-8000-000000000001' returning 1
-) select lujitos_tests.check((select count(*) from changed) = 0, 'B no puede modificar cuentas de A');
-with changed as (
-  update public.transactions set amount = 1 where id = 'aaaaaaaa-0000-4000-8000-0000000000e1' returning 1
-) select lujitos_tests.check((select count(*) from changed) = 0, 'B no puede modificar movimientos de A');
+do $$
+begin
+  perform public.update_account('aaaaaaaa-0000-4000-8000-000000000001', 'Intruso', 'savings', 'bancolombia', null,
+    1000000, null, null, null, null, null, null, null);
+  raise exception 'PRUEBA FALLIDA: B modificó la cuenta de A';
+exception when sqlstate 'LJ006' then raise notice 'ok - B no puede modificar cuentas de A';
+end $$;
+do $$
+begin
+  perform public.update_transaction('aaaaaaaa-0000-4000-8000-0000000000e1', 1, 'aaaaaaaa-0000-4000-8000-000000000001',
+    p_category_id => (select id from public.categories where slug = 'salary'));
+  raise exception 'PRUEBA FALLIDA: B modificó un movimiento de A';
+exception when sqlstate 'LJ006' then raise notice 'ok - B no puede modificar movimientos de A';
+end $$;
+do $$
+begin
+  perform public.void_transaction('aaaaaaaa-0000-4000-8000-0000000000e1');
+  raise exception 'PRUEBA FALLIDA: B anuló un movimiento de A';
+exception when sqlstate 'LJ006' then raise notice 'ok - B no puede anular movimientos de A';
+end $$;
+do $$
+begin
+  perform public.archive_account('aaaaaaaa-0000-4000-8000-000000000001', true);
+  raise exception 'PRUEBA FALLIDA: B archivó la cuenta de A';
+exception when sqlstate 'LJ006' then raise notice 'ok - B no puede archivar cuentas de A';
+end $$;
+do $$
+begin
+  perform public.reconcile_account('aaaaaaaa-0000-4000-8000-000000000001', 1, 'Intruso');
+  raise exception 'PRUEBA FALLIDA: B ajustó el saldo de A';
+exception when sqlstate 'LJ006' then raise notice 'ok - B no puede ajustar el saldo de cuentas de A';
+end $$;
 with changed as (
   update public.profiles set first_name = 'Intruso' where id = '11111111-1111-4111-8111-111111111111' returning 1
 ) select lujitos_tests.check((select count(*) from changed) = 0, 'B no puede modificar el perfil de A');
@@ -317,24 +363,25 @@ end $$;
 
 do $$
 begin
-  insert into public.transactions (account_id, category_id, type, amount)
-  values ('aaaaaaaa-0000-4000-8000-000000000001', (select id from public.categories where slug = 'food'), 'expense', 1000);
+  perform public.create_transaction('expense', 1000, 'aaaaaaaa-0000-4000-8000-000000000001',
+    p_category_id => (select id from public.categories where slug = 'food'));
   raise exception 'PRUEBA FALLIDA: B registró un movimiento en la cuenta de A';
-exception when foreign_key_violation then raise notice 'ok - B no puede usar cuentas de A (clave foránea compuesta)';
+exception when sqlstate 'LJ006' then raise notice 'ok - B no puede registrar movimientos en cuentas de A';
 end $$;
 
-insert into public.accounts (id, name, account_type) values ('bbbbbbbb-0000-4000-8000-000000000001', 'Efectivo B', 'cash');
+insert into lujitos_tests.ids (k, v)
+select 'efectivo_b', public.create_account('Efectivo B', 'cash', 'cash', null, 50000);
 do $$
 begin
-  insert into public.transactions (account_id, destination_account_id, type, amount)
-  values ('bbbbbbbb-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000001', 'transfer', 1000);
+  perform public.create_transaction('transfer', 1000, (select v from lujitos_tests.ids where k = 'efectivo_b'),
+    p_destination_account_id => 'aaaaaaaa-0000-4000-8000-000000000001');
   raise exception 'PRUEBA FALLIDA: B transfirió hacia la cuenta de A';
-exception when foreign_key_violation then raise notice 'ok - B no puede transferir hacia cuentas de A';
+exception when sqlstate 'LJ006' then raise notice 'ok - B no puede transferir hacia cuentas de A';
 end $$;
 do $$
 begin
-  insert into public.transactions (account_id, category_id, type, amount)
-  values ('bbbbbbbb-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-0000000000c1', 'expense', 1000);
+  perform public.create_transaction('expense', 1000, (select v from lujitos_tests.ids where k = 'efectivo_b'),
+    p_category_id => 'aaaaaaaa-0000-4000-8000-0000000000c1');
   raise exception 'PRUEBA FALLIDA: B usó una categoría privada de A';
 exception when check_violation then raise notice 'ok - B no puede usar categorías privadas de A';
 end $$;

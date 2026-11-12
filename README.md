@@ -3,10 +3,11 @@
 Gestor de finanzas personales para iPhone. Colombia, español, pesos colombianos (COP),
 zona horaria America/Bogota. **TU DINERO, BAJO CONTROL.**
 
-Estado: **Fase 3 terminada** (2026-11-11) — usuarios reales con Supabase (registro, inicio de sesión,
-recuperación de contraseña, perfil, onboarding), base PostgreSQL con RLS y auditoría, y
-cuentas y movimientos guardados de verdad. La demostración sigue disponible en
-Configuración. Reporte y pendientes: [docs/FASE3.md](docs/FASE3.md).
+Estado: **Fase 4** (2026-11-11) — motor financiero real: cuentas de todo tipo (bancos,
+billeteras, efectivo, inversiones, CDT, tarjetas con cupo), ingresos, gastos, transferencias y
+ajustes de saldo; editar y anular con trazabilidad; saldos, patrimonio y resumen calculados en
+PostgreSQL por funciones transaccionales. Reportes: [docs/FASE4.md](docs/FASE4.md) ·
+[docs/FASE3.md](docs/FASE3.md).
 
 ## Requisitos
 
@@ -26,9 +27,9 @@ Configuración. Reporte y pendientes: [docs/FASE3.md](docs/FASE3.md).
 | `npm run start:clear` | Red local borrando la caché de Metro. |
 | `npm run check` | TypeScript + ESLint + pruebas unitarias + pruebas SQL locales. |
 | `npm test` | Pruebas unitarias (jest-expo). |
-| `npm run test:db` | Migraciones y seguridad RLS en PostgreSQL local. |
-| `npm run test:db:remote` | Seguridad RLS en el proyecto real. |
-| `npm run test:integration` | Auth y aislamiento entre usuarios por la API real. |
+| `npm run test:db` | Migraciones, seguridad RLS y motor financiero en PostgreSQL local. |
+| `npm run test:db:remote` | Las mismas pruebas SQL en el proyecto real (se deshacen al final). |
+| `npm run test:integration` | Auth, motor financiero y aislamiento entre usuarios por la API real. |
 | `npm run db:push` | Aplica las migraciones al proyecto vinculado. |
 | `npm run db:types` | Regenera los tipos desde la base real (se comparan en `typecheck`). |
 | `npm run db:advisors` | Avisos de seguridad y rendimiento de Supabase. |
@@ -64,6 +65,7 @@ que fijar la IP del Wi-Fi: `$env:REACT_NATIVE_PACKAGER_HOSTNAME = '<IP>'; npm.cm
 - [Arquitectura y decisiones técnicas](docs/ARQUITECTURA.md)
 - [Sistema de diseño e identidad](docs/DISENO.md)
 - [Supabase: proyecto, variables, migraciones, auth y pruebas](docs/SUPABASE.md)
+- [Reporte de la Fase 4](docs/FASE4.md)
 - [Reporte de la Fase 3](docs/FASE3.md)
 - [Instrucciones para agentes de código](AGENTS.md)
 
@@ -72,7 +74,7 @@ que fijar la IP del Wi-Fi: `$env:REACT_NATIVE_PACKAGER_HOSTNAME = '<IP>'; npm.cm
 1. Configuración del proyecto y entorno — **hecha**
 2. Identidad visual y diseño de pantallas — **hecha**
 3. Autenticación y base de datos — **hecha**
-4. Inicio y cuentas
+4. Cuentas, movimientos y control de dinero — **en curso**
 5. Movimientos y cálculos financieros
 6. Presupuestos y objetivos de ahorro
 7. Deudas, tarjetas y calendario

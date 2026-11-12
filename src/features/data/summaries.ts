@@ -5,11 +5,13 @@
 import { groupOf } from '@/constants/institutions';
 import { monthKey, type ISODate } from '@/lib/dates';
 import type { Money } from '@/lib/money';
+import type { FinancialSummary } from '@/services/finance/financeService';
 import type { Account, AccountGroup, Transaction } from '@/types/finance';
 
 const sum = (values: Money[]): Money => values.reduce((total, value) => total + value, 0);
 
-const LIQUID: AccountGroup[] = ['banks', 'wallets', 'cash', 'other'];
+/** Dinero disponible: bancos, billeteras y efectivo (igual que financial_summary). */
+const LIQUID: AccountGroup[] = ['banks', 'wallets', 'cash'];
 
 export function isLiquidAccount(account: Account): boolean {
   return LIQUID.includes(groupOf(account.kind));
@@ -52,12 +54,46 @@ export function inMonth(transactions: Transaction[], key: string): Transaction[]
 export function accountsOverview(accounts: Account[]) {
   const active = accounts.filter((account) => account.isActive !== false);
   const available = sum(active.filter(isLiquidAccount).map((account) => account.balance));
-  const investments = sum(active.filter((account) => account.kind === 'investment').map((account) => account.balance));
+  const investments = sum(active.filter((account) => groupOf(account.kind) === 'investments').map((account) => account.balance));
   const debts = -sum(
     active.filter((account) => account.kind === 'credit_card' && account.balance < 0).map((account) => account.balance),
   );
   const netWorth = sum(active.map((account) => account.balance));
   return { available, investments, debts, netWorth };
+}
+
+/**
+ * Resumen financiero de una lista de cuentas con la MISMA lógica que
+ * public.financial_summary(). Solo para el modo demostración: con datos reales
+ * las cifras vienen siempre del servidor.
+ */
+export function summaryFromAccounts(accounts: Account[], transactions: Transaction[], monthStartKey: string): FinancialSummary {
+  const active = accounts.filter((account) => account.isActive !== false);
+  const of = (group: AccountGroup) => sum(active.filter((account) => groupOf(account.kind) === group).map((a) => a.balance));
+  const cards = active.filter((account) => account.kind === 'credit_card');
+  const banks = of('banks');
+  const wallets = of('wallets');
+  const cash = of('cash');
+  const month = inMonth(
+    transactions.filter((t) => !t.voidedAt),
+    monthStartKey,
+  );
+  return {
+    available: banks + wallets + cash,
+    banks,
+    wallets,
+    cash,
+    invested: of('investments'),
+    other: of('other'),
+    cardDebt: sum(cards.map((card) => Math.max(-card.balance, 0))),
+    creditLimit: sum(cards.map((card) => card.creditLimit ?? 0)),
+    creditAvailable: sum(cards.filter((card) => card.creditLimit).map((card) => Math.max((card.creditLimit ?? 0) + card.balance, 0))),
+    netWorth: sum(active.map((account) => account.balance)),
+    accounts: active.length,
+    monthStart: `${monthStartKey}-01`,
+    monthIncome: totalsOf(month).income,
+    monthExpense: totalsOf(month).expense,
+  };
 }
 
 export function groupAccounts(accounts: Account[]): { group: AccountGroup; accounts: Account[]; total: Money }[] {

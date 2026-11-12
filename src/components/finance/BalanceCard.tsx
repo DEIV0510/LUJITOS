@@ -19,13 +19,15 @@ type Props = {
   available: Money;
   investments: Money;
   debts: Money;
+  /** Desglose del dinero disponible (opcional). */
+  breakdown?: { banks: Money; wallets: Money; cash: Money };
 };
 
 /**
  * Tarjeta principal: patrimonio neto (lo que tienes menos lo que debes) separado
  * del dinero disponible (lo que puedes usar hoy).
  */
-export function BalanceCard({ netWorth, netWorthChange, previousNetWorth, available, investments, debts }: Props) {
+export function BalanceCard({ netWorth, netWorthChange, previousNetWorth, available, investments, debts, breakdown }: Props) {
   const { colors, spacing } = useAppTheme();
   const { hidden, toggle } = usePrivacy();
   const change = previousNetWorth === undefined ? null : percentChange(netWorth, previousNetWorth);
@@ -75,6 +77,22 @@ export function BalanceCard({ netWorth, netWorthChange, previousNetWorth, availa
           </View>
           <AmountText amount={available} variant="amount" color="onBrand" />
         </View>
+        {breakdown
+          ? (
+              [
+                ['Bancos', breakdown.banks],
+                ['Billeteras', breakdown.wallets],
+                ['Efectivo', breakdown.cash],
+              ] as const
+            ).map(([label, amount]) => (
+              <View key={label} style={styles.line}>
+                <AppText variant="footnote" color="onBrandSecondary" style={styles.indent}>
+                  {label}
+                </AppText>
+                <AmountText amount={amount} variant="amountS" color="onBrandSecondary" />
+              </View>
+            ))
+          : null}
         <View style={styles.line}>
           <AppText variant="footnote" color="onBrandSecondary" style={styles.indent}>
             Inversiones
@@ -83,7 +101,7 @@ export function BalanceCard({ netWorth, netWorthChange, previousNetWorth, availa
         </View>
         <View style={styles.line}>
           <AppText variant="footnote" color="onBrandSecondary" style={styles.indent}>
-            Deudas
+            Deudas (tarjetas)
           </AppText>
           <AmountText amount={-debts} variant="amountS" color="onBrandSecondary" />
         </View>

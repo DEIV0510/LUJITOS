@@ -4,11 +4,12 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/ui/AppText';
 import { FinancialCard } from '@/components/ui/FinancialCard';
 import { Icon } from '@/components/ui/Icon';
-import { ACCOUNT_KIND_LABEL, METHOD_LABEL } from '@/constants/institutions';
-import { useFinanceData } from '@/features/data/FinanceDataProvider';
-import { getInstitution, signedAmountFor } from '@/features/demo/selectors';
+import { ACCOUNT_KIND_LABEL } from '@/constants/institutions';
+import { cardDebt, cardMetrics, institutionOf, isCreditCard } from '@/features/accounts/display';
+import { usePrivacy } from '@/features/privacy/PrivacyProvider';
 import { formatShortDate } from '@/lib/dates';
-import { resolveTone, useAppTheme } from '@/theme';
+import { formatMoney } from '@/lib/money';
+import { resolveTone, useAppTheme, type ThemeColors } from '@/theme';
 import type { Account } from '@/types/finance';
 
 import { AmountText } from './AmountText';
@@ -16,38 +17,53 @@ import { InstitutionBadge } from './Badges';
 
 type Props = { account: Account; variant?: 'compact' | 'full' };
 
+type Status = { label: string; color: keyof ThemeColors };
+
+/** Indicador de estado de una cuenta (archivada, saldo negativo, cupo alto…). */
+export function accountStatus(account: Account): Status {
+  if (account.isActive === false) return { label: 'Archivada', color: 'textTertiary' };
+  if (isCreditCard(account)) {
+    const metrics = cardMetrics(account);
+    if (metrics && metrics.utilization >= 0.9) return { label: 'Cupo casi agotado', color: 'negative' };
+    if (metrics && metrics.utilization >= 0.7) return { label: 'Cupo alto', color: 'warning' };
+    return { label: cardDebt(account) === 0 ? 'Sin deuda' : 'Al día', color: 'positive' };
+  }
+  if (account.balance < 0) return { label: 'Saldo negativo', color: 'negative' };
+  if (account.stats && account.stats.transactionCount === 0) return { label: 'Sin movimientos', color: 'textTertiary' };
+  return { label: 'Activa', color: 'positive' };
+}
+
 /** Tarjeta de cuenta. 'compact' para el Inicio, 'full' para Mis cuentas. */
 export function AccountCard({ account, variant = 'full' }: Props) {
   const { colors, spacing, scheme } = useAppTheme();
-  const { transactions } = useFinanceData();
-  const institution = getInstitution(account);
+  const { hidden } = usePrivacy();
+  const institution = institutionOf(account);
   const tone = resolveTone(institution.tone, scheme);
+  const isCard = isCreditCard(account);
   const open = () => router.push({ pathname: '/account/[id]', params: { id: account.id } });
   const kindLabel = `${ACCOUNT_KIND_LABEL[account.kind]}${account.lastFour ? ` · •••• ${account.lastFour}` : ''}`;
+  const shown = isCard ? cardDebt(account) : account.balance;
 
   if (variant === 'compact') {
     return (
-      <FinancialCard
-        onPress={open}
-        accessibilityLabel={`${account.name}, ver detalle`}
-        style={styles.compact}
-        padding={spacing.md + 2}
-      >
+      <FinancialCard onPress={open} accessibilityLabel={`${account.name}, ver detalle`} style={styles.compact} padding={spacing.md + 2}>
         <View style={styles.compactTop}>
           <InstitutionBadge institution={institution} size={36} />
           <View style={[styles.dot, { backgroundColor: tone.base }]} />
         </View>
         <AppText variant="subhead" color="textSecondary" numberOfLines={1} style={{ marginTop: spacing.md }}>
-          {institution.name}
+          {isCard ? `${account.name} · deuda` : account.name}
         </AppText>
-        <AmountText amount={account.balance} variant="amountM" fit style={{ marginTop: 2 }} />
+        <AmountText amount={shown} variant="amountM" fit style={{ marginTop: 2 }} />
       </FinancialCard>
     );
   }
 
-  const last = transactions.find((t) => t.accountId === account.id || t.toAccountId === account.id);
+  const status = accountStatus(account);
+  const updated = account.stats?.lastActivityAt ?? account.updatedAt ?? null;
+  const metrics = isCard ? cardMetrics(account) : null;
   return (
-    <FinancialCard onPress={open} accessibilityLabel={`${account.name}, ${kindLabel}, ver detalle`} padding={spacing.lg}>
+    <FinancialCard onPress={open} accessibilityLabel={`${account.name}, ${institution.name}, ${kindLabel}, ver detalle`} padding={spacing.lg}>
       <View style={styles.row}>
         <InstitutionBadge institution={institution} size={44} />
         <View style={styles.texts}>
@@ -55,36 +71,32 @@ export function AccountCard({ account, variant = 'full' }: Props) {
             {account.name}
           </AppText>
           <AppText variant="footnote" color="textSecondary" numberOfLines={2}>
-            {kindLabel}
+            {institution.name} · {kindLabel}
           </AppText>
         </View>
-        <AmountText
-          amount={account.balance}
-          variant="amount"
-          color={account.balance < 0 ? 'negative' : 'text'}
-          style={styles.balance}
-        />
+        <View style={styles.amount}>
+          <AmountText amount={shown} variant="amount" color={!isCard && account.balance < 0 ? 'negative' : 'text'} align="right" />
+          <AppText variant="caption" color="textTertiary" align="right">
+            {isCard ? 'Deuda' : 'Saldo'}
+          </AppText>
+        </View>
       </View>
       <View style={[styles.footer, { borderTopColor: colors.border, marginTop: spacing.md, paddingTop: spacing.md }]}>
         <View style={styles.footerItem}>
-          <Icon name="clock.fill" size={12} color={colors.textTertiary} />
-          {last ? (
-            <AppText variant="footnote" color="textSecondary" numberOfLines={2} style={styles.flex}>
-              {last.description || 'Movimiento'} · {formatShortDate(last.date)} ·{' '}
-              <AmountText amount={signedAmountFor(last, account.id)} variant="footnote" sign="always" color="textSecondary" />
-            </AppText>
-          ) : (
-            <AppText variant="footnote" color="textSecondary">
-              Sin movimientos recientes
-            </AppText>
-          )}
-        </View>
-        <View style={styles.method}>
-          <Icon name="hand.tap.fill" size={12} color={colors.textTertiary} />
-          <AppText variant="caption" color="textTertiary" numberOfLines={1}>
-            {METHOD_LABEL[account.method]}
+          <View style={[styles.statusDot, { backgroundColor: colors[status.color] }]} />
+          <AppText variant="footnote" color="textSecondary" numberOfLines={1} style={styles.flex}>
+            {status.label}
+            {metrics ? ` · disponible ${formatMoney(metrics.available, { hidden })}` : ''}
           </AppText>
         </View>
+        {updated ? (
+          <View style={styles.footerItem}>
+            <Icon name="clock.fill" size={12} color={colors.textTertiary} />
+            <AppText variant="caption" color="textTertiary" numberOfLines={1}>
+              Actualizada el {formatShortDate(updated.slice(0, 10))}
+            </AppText>
+          </View>
+        ) : null}
       </View>
     </FinancialCard>
   );
@@ -96,9 +108,9 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, marginTop: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   texts: { flex: 1, minWidth: 0, gap: 2 },
-  balance: { flexShrink: 0, maxWidth: '45%' },
+  amount: { flexShrink: 0, maxWidth: '45%', alignItems: 'flex-end' },
   footer: { borderTopWidth: StyleSheet.hairlineWidth, gap: 6 },
   footerItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  method: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
   flex: { flex: 1 },
 });

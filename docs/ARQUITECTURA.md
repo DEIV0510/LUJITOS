@@ -154,20 +154,31 @@ usuario no puede quedar ningún dato del anterior en memoria.
   Los enteros de JavaScript son exactos hasta 9 × 10¹⁵. Formato y lectura en `src/lib/money.ts`.
 - Los importes de movimientos son siempre positivos (`CHECK amount > 0`); el tipo define
   si suma o resta. Los ajustes llevan `adjustment_sign` (+1/−1).
-- **Saldo actual** = saldo inicial + suma de movimientos. Se calcula, no se escribe a mano;
-  `account_snapshots` guarda la foto diaria para las gráficas de evolución.
+- **Saldo actual** = saldo inicial + ingresos + transferencias recibidas − gastos −
+  transferencias enviadas ± ajustes. Se calcula SIEMPRE en PostgreSQL con una única regla
+  (`public.transaction_effect`), que usan la vista `account_balances`, el historial del
+  gráfico (`account_balance_history`) y las validaciones. No hay saldos guardados aparte
+  (`account_snapshots` queda sin uso para no tener dos verdades).
+- **Tarjetas**: el saldo es negativo = deuda. Compra (gasto) la aumenta; intereses y comisiones
+  son gastos con su categoría; el pago es una transferencia banco → tarjeta (reduce la deuda y
+  el banco, no es gasto). Cupo disponible = cupo − deuda. El cupo nunca suma al patrimonio.
+- **Resumen** (`financial_summary`): disponible = bancos + billeteras + efectivo; invertido =
+  inversión + CDT + fondos; deuda = tarjetas; patrimonio neto = suma de saldos de cuentas
+  activas (las tarjetas restan). Ingresos y gastos del mes excluyen transferencias y ajustes.
 - **Transferencias** entre cuentas propias: no cuentan como ingreso ni gasto.
 - **Tarjetas de crédito**: la compra es el gasto (aumenta la deuda de la tarjeta). El pago
   de la tarjeta es una transferencia de la cuenta bancaria a la tarjeta, no otro gasto.
   Así nada se cuenta dos veces.
 - **Fechas**: `transaction_date` es `date` (día de Bogotá); marcas de tiempo en `timestamptz`.
 - **Integridad histórica**: las cuentas no se borran, se archivan (`is_active`, `archived_at`);
-  los movimientos se marcan con `deleted_at` y dejan de contar. No hay políticas DELETE para ellos.
+  los movimientos se ANULAN (`deleted_at` + `void_reason`) y dejan de contar. Un anulado no se
+  edita. El saldo inicial no cambia si la cuenta ya tiene movimientos (se corrige con
+  «Ajustar saldo», que registra la diferencia con su motivo).
 - **Cuentas de otros usuarios**: los movimientos y los históricos usan claves foráneas
   compuestas `(account_id, user_id)`: aunque alguien conozca el UUID de una cuenta ajena,
   la base rechaza la referencia.
 
-## 6. Base de datos (Fase 3)
+## 6. Base de datos (Fases 3 y 4)
 
 Tablas creadas (todas con RLS): `profiles`, `accounts`, `categories`, `transactions`,
 `account_snapshots`, `user_preferences`, `audit_logs`, más la vista `account_balances`
@@ -180,11 +191,22 @@ Pendientes para sus fases: `budgets`, `budget_categories`, `savings_goals`, `deb
 | --- | --- | --- | --- | --- |
 | profiles | propio | solo el trigger de registro | propio, columnas permitidas (no el correo) | no |
 | user_preferences | propias | solo el trigger | propias, columnas permitidas | no |
-| accounts | propias | propias | propias (no cambia de dueño) | no: se archivan |
-| categories | sistema + propias | propias (nunca del sistema) | propias | propias sin movimientos |
-| transactions | propios | propios (cuentas y categorías válidas) | propios | no: borrado lógico |
+| accounts | propias | solo RPC `create_account` | solo RPC `update_account` / `archive_account` | no: se archivan |
+| categories | sistema + propias | propias (nunca del sistema) | propias (archivar) | RPC `delete_category` (reasigna) |
+| transactions | propios | solo RPC `create_transaction` / `reconcile_account` | solo RPC `update_transaction` / `void_transaction` | no: anulación |
 | account_snapshots | propios | propios | no | no |
 | audit_logs | propios | no: solo triggers | no | no |
+
+**Motor financiero (Fase 4).** Toda escritura de cuentas y movimientos pasa por funciones
+RPC (`supabase/migrations/20261112090100_finance_engine.sql`). Cada una toma el usuario de
+`auth.uid()` (nunca de la app), comprueba que todas las cuentas sean suyas y estén activas,
+bloquea las cuentas involucradas en orden fijo (`FOR UPDATE`: dos operaciones simultáneas no
+se cruzan ni se bloquean entre sí), valida montos, fechas, categorías y cupos, y acepta una
+clave de idempotencia (`client_request_id`): un doble toque o un reintento no duplica. Las
+implementaciones SECURITY DEFINER viven en el esquema `private` (la API no lo publica); en
+`public` quedan envoltorios SECURITY INVOKER. Advertencias confirmables: `LJ001` saldo
+negativo, `LJ002` cupo, `LJ003` transferencia repetida en 2 minutos, `LJ004` archivar con
+saldo; errores: `LJ005`–`LJ009` (`src/services/finance/errors.ts`).
 
 **Auditoría (`audit_logs`).** Triggers SECURITY DEFINER anotan registro, confirmación de
 correo, inicio de sesión, cambio de contraseña y de correo (desde `auth.users`); cuentas

@@ -13,6 +13,8 @@ export type InstitutionId =
   | 'daviplata'
   | 'bbva'
   | 'bogota'
+  | 'cajasocial'
+  | 'nu'
   | 'cash'
   | 'custom';
 
@@ -33,6 +35,8 @@ export type AccountKind =
   | 'digital_wallet'
   | 'cash'
   | 'investment'
+  | 'cdt'
+  | 'investment_fund'
   | 'credit_card'
   | 'other';
 
@@ -40,21 +44,49 @@ export type AccountGroup = 'banks' | 'wallets' | 'cash' | 'other' | 'investments
 
 export type RegistrationMethod = 'manual' | 'imported' | 'connected';
 
+/** Resumen de una cuenta calculado en PostgreSQL (vista account_balances). */
+export type AccountStats = {
+  totalIncome: Money;
+  totalExpense: Money;
+  transfersIn: Money;
+  transfersOut: Money;
+  adjustmentsNet: Money;
+  transactionCount: number;
+  lastTransactionDate: ISODate | null;
+  /** Último movimiento registrado o editado (fecha y hora). */
+  lastActivityAt: string | null;
+};
+
 export type Account = {
   id: string;
   name: string;
   institutionId: InstitutionId;
+  /** Nombre de la entidad cuando no está en la lista. */
+  institutionName?: string | null;
   kind: AccountKind;
-  /** Saldo actual (en la Fase 5 se calculará: saldo inicial + movimientos). */
+  /**
+   * Saldo actual calculado en el servidor: inicial + movimientos no anulados.
+   * En tarjetas es negativo cuando hay deuda (deuda = −saldo).
+   */
   balance: Money;
+  /** Dinero o deuda (negativo) con el que empezó en LUJITOS. */
   initialBalance: Money;
   currency: 'COP';
   createdAt: ISODate;
+  updatedAt?: string;
   lastFour?: string;
   method: RegistrationMethod;
   creditLimit?: Money;
   isActive?: boolean;
+  /** Tono de la paleta elegido por el usuario. */
   color?: string | null;
+  /** SF Symbol elegido por el usuario. */
+  icon?: string | null;
+  description?: string | null;
+  /** Solo tarjetas: día de corte y día límite de pago. */
+  statementDay?: number | null;
+  paymentDueDay?: number | null;
+  stats?: AccountStats;
 };
 
 /** Tipos que se registran desde el formulario. */
@@ -78,6 +110,10 @@ export type Transaction = {
   date: ISODate;
   notes?: string;
   tags?: string[];
+  /** Fecha y hora de anulación (los anulados se conservan). */
+  voidedAt?: string | null;
+  voidReason?: string | null;
+  createdAt?: string;
 };
 
 export type CategoryKind = 'income' | 'expense';
@@ -91,6 +127,8 @@ export type Category = {
   /** Clave estable de las categorías del sistema (salary, food…). */
   slug?: string | null;
   isDefault?: boolean;
+  /** Archivada: no se ofrece para movimientos nuevos, pero conserva su historial. */
+  archivedAt?: string | null;
 };
 
 export type BudgetLine = {

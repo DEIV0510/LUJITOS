@@ -17,10 +17,12 @@ type Enums = Generated['public']['Enums'];
 type BalanceView = Generated['public']['Views']['account_balances']['Row'];
 
 // Postgres declara anulables todas las columnas de una vista. En account_balances
-// solo last_transaction_date puede ser NULL (id es PK, user_id NOT NULL, saldo con coalesce).
+// solo las fechas del último movimiento pueden ser NULL (cuenta sin movimientos);
+// id es PK, user_id NOT NULL y los montos usan coalesce.
+type NullableBalanceColumns = 'last_transaction_date' | 'last_activity_at';
 type BalanceViewReal = Flat<
-  { [K in Exclude<keyof BalanceView, 'last_transaction_date'>]: NonNullable<BalanceView[K]> } & {
-    last_transaction_date: BalanceView['last_transaction_date'];
+  { [K in Exclude<keyof BalanceView, NullableBalanceColumns>]: NonNullable<BalanceView[K]> } & {
+    [K in NullableBalanceColumns]: BalanceView[K];
   }
 >;
 

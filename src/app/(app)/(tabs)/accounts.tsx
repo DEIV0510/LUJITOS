@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
@@ -11,43 +12,63 @@ import { IconButton, SecondaryButton } from '@/components/ui/Buttons';
 import { FinancialCard } from '@/components/ui/FinancialCard';
 import { ListRow } from '@/components/ui/Rows';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { ACCOUNT_GROUP_LABEL } from '@/constants/institutions';
 import { EmptyState, LoadingState } from '@/components/ui/States';
+import { ACCOUNT_GROUP_LABEL } from '@/constants/institutions';
 import { DemoModeBanner } from '@/features/data/DemoModeBanner';
 import { useFinanceData } from '@/features/data/FinanceDataProvider';
-import { accountsOverview, groupAccounts } from '@/features/data/summaries';
-import { getBalanceOverview } from '@/features/demo/selectors';
+import { groupAccounts } from '@/features/data/summaries';
 import { usePrivacy } from '@/features/privacy/PrivacyProvider';
-import { formatMoney } from '@/lib/money';
+import { formatMoney, type Money } from '@/lib/money';
 import { useAppTheme } from '@/theme';
 
+/** Mis cuentas: totales calculados en el servidor y una tarjeta por cuenta. */
 export default function AccountsScreen() {
   const { spacing } = useAppTheme();
-  const { hidden } = usePrivacy();
-  const { mode, accounts, status, error, reload } = useFinanceData();
-  const active = accounts.filter((account) => account.isActive !== false);
-  // En demo, las deudas incluyen préstamos ficticios que no son cuentas.
-  const overview = mode === 'demo' ? getBalanceOverview() : accountsOverview(active);
-  const groups = groupAccounts(active);
-  const count = active.length;
+  const { hidden, toggle } = usePrivacy();
+  const { mode, accounts, activeAccounts, summary, status, error, reload } = useFinanceData();
+  const [showArchived, setShowArchived] = useState(false);
+  const archived = accounts.filter((account) => account.isActive === false);
+  const groups = groupAccounts(activeAccounts);
+  const count = activeAccounts.length;
 
-  return (
-    <Screen inTabs withFab>
-      <TabHeader
-        title="Mis cuentas"
-        subtitle={count === 0 ? 'Registro manual' : `${count} ${count === 1 ? 'cuenta' : 'cuentas'} · registro manual`}
-        right={<IconButton icon="plus" accessibilityLabel="Agregar cuenta" onPress={() => router.push('/account/new')} />}
-      />
+  const header = (
+    <TabHeader
+      title="Mis cuentas"
+      subtitle={count === 0 ? 'Registro manual' : `${count} ${count === 1 ? 'cuenta activa' : 'cuentas activas'}`}
+      right={
+        <View style={styles.headerActions}>
+          <IconButton icon={hidden ? 'eye.slash.fill' : 'eye.fill'} variant="plain" accessibilityLabel={hidden ? 'Mostrar saldos' : 'Ocultar saldos'} onPress={toggle} />
+          <IconButton icon="plus" accessibilityLabel="Agregar cuenta" onPress={() => router.push('/account/new')} />
+        </View>
+      }
+    />
+  );
 
-      {mode === 'live' && (status === 'loading' || status === 'idle') ? (
+  if (mode === 'live' && (status === 'loading' || status === 'idle')) {
+    return (
+      <Screen inTabs withFab>
+        {header}
         <FinancialCard padding={spacing.xl}>
           <LoadingState rows={3} label="Cargando tus cuentas" />
         </FinancialCard>
-      ) : mode === 'live' && status === 'error' ? (
+      </Screen>
+    );
+  }
+  if (mode === 'live' && status === 'error') {
+    return (
+      <Screen inTabs withFab>
+        {header}
         <FinancialCard>
           <EmptyState icon="wifi" title="No pudimos cargar tus cuentas" message={error ?? 'Revisa tu conexión.'} actionLabel="Reintentar" onAction={() => void reload()} />
         </FinancialCard>
-      ) : count === 0 ? (
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen inTabs withFab>
+      {header}
+      {count === 0 ? (
         <FinancialCard>
           <EmptyState
             icon="creditcard.fill"
@@ -57,40 +78,34 @@ export default function AccountsScreen() {
             onAction={() => router.push('/account/new')}
           />
         </FinancialCard>
-      ) : (
-      <>
-      <Animated.View entering={FadeInDown.duration(380)} style={{ gap: spacing.md }}>
-        <FinancialCard tone="brand" padding={spacing.xl}>
-          <AppText variant="overline" color="onBrandSecondary">
-            Saldo consolidado
-          </AppText>
-          <AmountText amount={overview.available} variant="display" color="onBrand" fit style={{ marginTop: spacing.xs }} />
-          <AppText variant="footnote" color="onBrandSecondary" style={{ marginTop: spacing.xs }}>
-            Bancos, billeteras, efectivo y otras cuentas. Las inversiones y las tarjetas se muestran aparte.
-          </AppText>
-          <View style={[styles.split, { marginTop: spacing.lg }]}>
-            <View style={styles.flex}>
-              <AppText variant="caption" color="onBrandSecondary">
-                Inversiones
-              </AppText>
-              <AmountText amount={overview.investments} variant="amountS" color="onBrand" />
+      ) : summary ? (
+        <Animated.View entering={FadeInDown.duration(380)} style={{ gap: spacing.md }}>
+          <FinancialCard tone="brand" padding={spacing.xl}>
+            <AppText variant="overline" color="onBrandSecondary">
+              Saldo total de cuentas
+            </AppText>
+            <AmountText amount={summary.available + summary.invested + summary.other} variant="display" color="onBrand" fit style={{ marginTop: spacing.xs }} />
+            <AppText variant="footnote" color="onBrandSecondary" style={{ marginTop: spacing.xs }}>
+              Lo que tienes en cuentas activas, sin restar deudas. El cupo de las tarjetas no se suma.
+            </AppText>
+            <View style={[styles.grid, { marginTop: spacing.lg, rowGap: spacing.md }]}>
+              <Figure label="Dinero disponible" amount={summary.available} />
+              <Figure label="Total en bancos" amount={summary.banks} />
+              <Figure label="Billeteras digitales" amount={summary.wallets} />
+              <Figure label="Efectivo" amount={summary.cash} />
+              <Figure label="Total invertido" amount={summary.invested} />
+              <Figure label="Deuda en tarjetas" amount={-summary.cardDebt} />
             </View>
-            <View style={styles.flex}>
-              <AppText variant="caption" color="onBrandSecondary">
-                Deudas totales
-              </AppText>
-              <AmountText amount={-overview.debts} variant="amountS" color="onBrand" />
-            </View>
-          </View>
-        </FinancialCard>
-        <DemoModeBanner />
-      </Animated.View>
+          </FinancialCard>
+          <DemoModeBanner />
+        </Animated.View>
+      ) : null}
 
       {groups.map((entry) => (
         <View key={entry.group}>
           <SectionHeader
             title={ACCOUNT_GROUP_LABEL[entry.group]}
-            subtitle={`${entry.accounts.length} ${entry.accounts.length === 1 ? 'cuenta' : 'cuentas'} · ${formatMoney(entry.total, { hidden })}`}
+            subtitle={`${entry.accounts.length} ${entry.accounts.length === 1 ? 'cuenta' : 'cuentas'} · ${formatMoney(entry.group === 'credit' ? -entry.total : entry.total, { hidden })}${entry.group === 'credit' ? ' de deuda' : ''}`}
           />
           <View style={{ gap: spacing.md }}>
             {entry.accounts.map((account) => (
@@ -100,20 +115,52 @@ export default function AccountsScreen() {
         </View>
       ))}
 
-      <FinancialCard padding={spacing.lg} style={styles.links}>
-        <ListRow icon="creditcard.fill" tone="gold" title="Tarjetas de crédito" subtitle="Cupo, cortes y pagos" onPress={() => router.push('/cards')} />
-        <ListRow icon="banknote.fill" tone="clay" title="Deudas" subtitle="Préstamos, cuotas y estrategias" onPress={() => router.push('/debts')} showDivider />
-      </FinancialCard>
+      {archived.length > 0 ? (
+        <View>
+          <SectionHeader
+            title="Archivadas"
+            subtitle={`${archived.length} · no suman en tus totales`}
+            actionLabel={showArchived ? 'Ocultar' : 'Ver'}
+            onAction={() => setShowArchived((value) => !value)}
+          />
+          {showArchived ? (
+            <View style={{ gap: spacing.md }}>
+              {archived.map((account) => (
+                <AccountCard key={account.id} account={account} />
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
-      <SecondaryButton label="Agregar cuenta" icon="plus" size="large" onPress={() => router.push('/account/new')} />
-      </>
-      )}
+      {count > 0 ? (
+        <>
+          <FinancialCard padding={spacing.lg} style={styles.links}>
+            <ListRow icon="creditcard.fill" tone="gold" title="Tarjetas de crédito" subtitle="Cupo, deuda, corte y pago" onPress={() => router.push('/cards')} />
+            <ListRow icon="square.grid.2x2.fill" tone="sage" title="Categorías" subtitle="Crea, edita y archiva las tuyas" onPress={() => router.push('/categories')} showDivider />
+            <ListRow icon="banknote.fill" tone="clay" title="Deudas" subtitle="Préstamos, cuotas y estrategias" onPress={() => router.push('/debts')} showDivider />
+          </FinancialCard>
+          <SecondaryButton label="Agregar cuenta" icon="plus" size="large" onPress={() => router.push('/account/new')} />
+        </>
+      ) : null}
     </Screen>
   );
 }
 
+function Figure({ label, amount }: { label: string; amount: Money }) {
+  return (
+    <View style={styles.figure}>
+      <AppText variant="caption" color="onBrandSecondary" numberOfLines={1}>
+        {label}
+      </AppText>
+      <AmountText amount={amount} variant="amountS" color="onBrand" fit />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  split: { flexDirection: 'row', gap: 16 },
-  flex: { flex: 1, minWidth: 0, gap: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  figure: { width: '50%', paddingRight: 12, gap: 2 },
   links: { paddingVertical: 4 },
 });

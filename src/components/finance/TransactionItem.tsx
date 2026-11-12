@@ -2,8 +2,8 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/ui/AppText';
-import { INSTITUTIONS } from '@/constants/institutions';
 import { TRANSACTION_TYPE_LABEL } from '@/constants/transactions';
+import { institutionOf } from '@/features/accounts/display';
 import { useFinanceData } from '@/features/data/FinanceDataProvider';
 import { usePrivacy } from '@/features/privacy/PrivacyProvider';
 import { formatShortDate } from '@/lib/dates';
@@ -24,9 +24,8 @@ type Props = {
 /** Nombre corto para las listas: la entidad («Bancolombia») o el nombre propio de la cuenta. */
 function shortAccountName(account: Account | undefined): string {
   if (!account) return '';
-  if (account.kind === 'credit_card') return account.name;
-  const institution = INSTITUTIONS[account.institutionId];
-  return account.institutionId === 'custom' || account.institutionId === 'cash' ? account.name : institution.name;
+  if (account.kind === 'credit_card' || account.institutionId === 'cash') return account.name;
+  return institutionOf(account).name;
 }
 
 /** Fila de movimiento: ícono de categoría, descripción, datos y valor con signo. */
@@ -43,12 +42,14 @@ export function TransactionItem({ transaction, meta = 'category', showDivider }:
   const accountText = isTransfer
     ? `${shortAccountName(account)} → ${shortAccountName(target)}`
     : shortAccountName(account);
-  const metaText =
+  const voided = Boolean(transaction.voidedAt);
+  const baseMeta =
     meta === 'date'
       ? `${formatShortDate(transaction.date)} · ${accountText}`
       : isTransfer
         ? accountText
         : `${category.name} · ${accountText}`;
+  const metaText = voided ? `Anulado · ${baseMeta}` : baseMeta;
   const signed =
     transaction.type === 'expense'
       ? -transaction.amount
@@ -72,8 +73,8 @@ export function TransactionItem({ transaction, meta = 'category', showDivider }:
     >
       <CategoryIcon category={category} size={42} />
       <View style={styles.texts}>
-        <AppText variant="bodyStrong" numberOfLines={2}>
-          {transaction.description || category.name}
+        <AppText variant="bodyStrong" numberOfLines={2} color={voided ? 'textTertiary' : 'text'}>
+          {transaction.description || transaction.counterparty || category.name}
         </AppText>
         <AppText variant="footnote" color="textSecondary" numberOfLines={2}>
           {metaText}
@@ -82,8 +83,8 @@ export function TransactionItem({ transaction, meta = 'category', showDivider }:
       <AmountText
         amount={signed}
         sign={isTransfer ? 'never' : 'always'}
-        color={transaction.type === 'income' ? 'positive' : isTransfer ? 'textSecondary' : 'text'}
-        style={styles.amount}
+        color={voided ? 'textTertiary' : transaction.type === 'income' ? 'positive' : isTransfer ? 'textSecondary' : 'text'}
+        style={[styles.amount, voided && styles.struck]}
       />
     </Pressable>
   );
@@ -93,4 +94,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 10 },
   texts: { flex: 1, minWidth: 0, gap: 2 },
   amount: { flexShrink: 0, maxWidth: '44%' },
+  struck: { textDecorationLine: 'line-through' },
 });

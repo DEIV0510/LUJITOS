@@ -60,54 +60,69 @@ export type Database = {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
           archived_at: string | null
+          client_request_id: string | null
           color: string | null
           connection_type: Database["public"]["Enums"]["connection_type"]
           created_at: string
           credit_limit: number | null
           currency: string
+          description: string | null
           icon: string | null
           id: string
           initial_balance: number
           institution: string
+          institution_name: string | null
           is_active: boolean
           last_four_digits: string | null
           name: string
+          payment_due_day: number | null
+          statement_day: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
           account_type: Database["public"]["Enums"]["account_type"]
           archived_at?: string | null
+          client_request_id?: string | null
           color?: string | null
           connection_type?: Database["public"]["Enums"]["connection_type"]
           created_at?: string
           credit_limit?: number | null
           currency?: string
+          description?: string | null
           icon?: string | null
           id?: string
           initial_balance?: number
           institution?: string
+          institution_name?: string | null
           is_active?: boolean
           last_four_digits?: string | null
           name: string
+          payment_due_day?: number | null
+          statement_day?: number | null
           updated_at?: string
           user_id?: string
         }
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
           archived_at?: string | null
+          client_request_id?: string | null
           color?: string | null
           connection_type?: Database["public"]["Enums"]["connection_type"]
           created_at?: string
           credit_limit?: number | null
           currency?: string
+          description?: string | null
           icon?: string | null
           id?: string
           initial_balance?: number
           institution?: string
+          institution_name?: string | null
           is_active?: boolean
           last_four_digits?: string | null
           name?: string
+          payment_due_day?: number | null
+          statement_day?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -142,6 +157,7 @@ export type Database = {
       }
       categories: {
         Row: {
+          archived_at: string | null
           color: string
           created_at: string
           icon: string
@@ -153,6 +169,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          archived_at?: string | null
           color?: string
           created_at?: string
           icon?: string
@@ -164,6 +181,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          archived_at?: string | null
           color?: string
           created_at?: string
           icon?: string
@@ -227,6 +245,7 @@ export type Database = {
           adjustment_sign: number | null
           amount: number
           category_id: string | null
+          client_request_id: string | null
           created_at: string
           deleted_at: string | null
           description: string
@@ -239,12 +258,14 @@ export type Database = {
           type: Database["public"]["Enums"]["transaction_type"]
           updated_at: string
           user_id: string
+          void_reason: string | null
         }
         Insert: {
           account_id?: string | null
           adjustment_sign?: number | null
           amount: number
           category_id?: string | null
+          client_request_id?: string | null
           created_at?: string
           deleted_at?: string | null
           description?: string
@@ -257,12 +278,14 @@ export type Database = {
           type: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string
           user_id?: string
+          void_reason?: string | null
         }
         Update: {
           account_id?: string | null
           adjustment_sign?: number | null
           amount?: number
           category_id?: string | null
+          client_request_id?: string | null
           created_at?: string
           deleted_at?: string | null
           description?: string
@@ -275,6 +298,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string
           user_id?: string
+          void_reason?: string | null
         }
         Relationships: [
           {
@@ -355,16 +379,132 @@ export type Database = {
       account_balances: {
         Row: {
           account_id: string | null
+          adjustments_net: number | null
           balance: number | null
+          last_activity_at: string | null
           last_transaction_date: string | null
+          total_expense: number | null
+          total_income: number | null
           transaction_count: number | null
+          transfers_in: number | null
+          transfers_out: number | null
           user_id: string | null
         }
         Relationships: []
       }
     }
     Functions: {
-      [_ in never]: never
+      account_balance_history: {
+        Args: { p_account_id: string; p_from: string; p_to: string }
+        Returns: {
+          balance: number
+          day: string
+        }[]
+      }
+      archive_account: {
+        Args: { p_account_id: string; p_force?: boolean }
+        Returns: undefined
+      }
+      create_account: {
+        Args: {
+          p_account_type: Database["public"]["Enums"]["account_type"]
+          p_color?: string
+          p_credit_limit?: number
+          p_description?: string
+          p_icon?: string
+          p_initial_balance?: number
+          p_institution?: string
+          p_institution_name?: string
+          p_last_four_digits?: string
+          p_name: string
+          p_payment_due_day?: number
+          p_request_id?: string
+          p_statement_day?: number
+        }
+        Returns: string
+      }
+      create_transaction: {
+        Args: {
+          p_account_id: string
+          p_allow_duplicate?: boolean
+          p_allow_negative?: boolean
+          p_amount: number
+          p_category_id?: string
+          p_description?: string
+          p_destination_account_id?: string
+          p_merchant?: string
+          p_notes?: string
+          p_request_id?: string
+          p_transaction_date?: string
+          p_type: Database["public"]["Enums"]["transaction_type"]
+        }
+        Returns: string
+      }
+      delete_category: {
+        Args: { p_category_id: string; p_reassign_to?: string }
+        Returns: undefined
+      }
+      financial_summary: { Args: { p_month?: string }; Returns: Json }
+      reconcile_account: {
+        Args: {
+          p_account_id: string
+          p_expected_balance?: number
+          p_observed_balance: number
+          p_reason: string
+          p_request_id?: string
+        }
+        Returns: Json
+      }
+      restore_account: { Args: { p_account_id: string }; Returns: undefined }
+      transaction_effect: {
+        Args: {
+          p_account_id: string
+          p_adjustment_sign: number
+          p_amount: number
+          p_destination_account_id: string
+          p_target: string
+          p_type: Database["public"]["Enums"]["transaction_type"]
+        }
+        Returns: number
+      }
+      update_account: {
+        Args: {
+          p_account_id: string
+          p_account_type: Database["public"]["Enums"]["account_type"]
+          p_color: string
+          p_credit_limit: number
+          p_description: string
+          p_icon: string
+          p_initial_balance: number
+          p_institution: string
+          p_institution_name: string
+          p_last_four_digits: string
+          p_name: string
+          p_payment_due_day: number
+          p_statement_day: number
+        }
+        Returns: string
+      }
+      update_transaction: {
+        Args: {
+          p_account_id: string
+          p_allow_duplicate?: boolean
+          p_allow_negative?: boolean
+          p_amount: number
+          p_category_id?: string
+          p_description?: string
+          p_destination_account_id?: string
+          p_merchant?: string
+          p_notes?: string
+          p_transaction_date?: string
+          p_transaction_id: string
+        }
+        Returns: string
+      }
+      void_transaction: {
+        Args: { p_reason?: string; p_transaction_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       account_type:
@@ -375,6 +515,8 @@ export type Database = {
         | "checking"
         | "credit_card"
         | "investment"
+        | "cdt"
+        | "investment_fund"
         | "other"
       category_type: "income" | "expense"
       connection_type: "manual" | "import" | "open_finance"
@@ -516,6 +658,8 @@ export const Constants = {
         "checking",
         "credit_card",
         "investment",
+        "cdt",
+        "investment_fund",
         "other",
       ],
       category_type: ["income", "expense"],

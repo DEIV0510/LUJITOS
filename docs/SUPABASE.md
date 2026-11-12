@@ -70,6 +70,9 @@ Aplica en orden los archivos de `supabase/migrations/`:
 | `20261111120300_default_categories.sql` | 23 categorías del sistema |
 | `20261111120400_lock_rls_auto_enable.sql` | Quita a `anon`/`authenticated` el permiso de llamar `rls_auto_enable()`, la función que crea «Enable automatic RLS» |
 | `20261111120500_audit_logs.sql` | Tabla `audit_logs` y triggers de auditoría (Auth, cuentas, movimientos, categorías, perfil, preferencias). Solo lectura de los propios |
+| `20261112090000_account_types_extension.sql` | Tipos de cuenta CDT y fondo de inversión |
+| `20261112090100_finance_engine.sql` | Motor financiero: regla única de saldos, funciones RPC transaccionales, anulación, ajuste de saldo, categorías archivables, resumen y historial |
+| `20261112090200_rpc_private_impl.sql` | Implementaciones con privilegios al esquema `private`; en la API solo envoltorios sin privilegios |
 
 Después de una migración nueva: `npm run db:types` regenera
 `src/types/database.generated.ts` y `npm run typecheck` avisa si `src/types/database.ts`

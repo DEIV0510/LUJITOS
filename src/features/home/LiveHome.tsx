@@ -19,7 +19,7 @@ import { Icon } from '@/components/ui/Icon';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { EmptyState, LoadingState } from '@/components/ui/States';
 import { useFinanceData } from '@/features/data/FinanceDataProvider';
-import { accountsOverview, inMonth, totalsOf } from '@/features/data/summaries';
+import { totalsOf } from '@/features/data/summaries';
 import { MONTHS, capitalize, nowInBogota, parseISO, toISO } from '@/lib/dates';
 import { useAppTheme } from '@/theme';
 
@@ -29,18 +29,16 @@ const enter = (order: number) => FadeInDown.delay(80 + order * 70).duration(420)
 
 export function LiveHome() {
   const { colors, spacing } = useAppTheme();
-  const { status, error, accounts, transactions, reload, setMode } = useFinanceData();
-  const active = accounts.filter((account) => account.isActive !== false);
-  const overview = accountsOverview(active);
+  const { status, error, activeAccounts: active, transactions, summary, reload, setMode } = useFinanceData();
 
   const today = nowInBogota().date;
   const { year, month, day } = parseISO(today);
-  const currentKey = today.slice(0, 7);
   const previousMonth = month === 1 ? 12 : month - 1;
   const previousYear = month === 1 ? year - 1 : year;
   const previousStart = toISO(previousYear, previousMonth, 1);
   const previousEnd = toISO(previousYear, previousMonth, day);
-  const current = totalsOf(inMonth(transactions, currentKey));
+  // Mes actual: cifras del servidor. Mismo tramo del mes anterior: para comparar.
+  const current = { income: summary?.monthIncome ?? 0, expense: summary?.monthExpense ?? 0 };
   const previous = totalsOf(transactions.filter((t) => t.date >= previousStart && t.date <= previousEnd));
   const recent = transactions.slice(0, 5);
 
@@ -93,7 +91,15 @@ export function LiveHome() {
       ) : (
         <>
           <Animated.View entering={enter(1)}>
-            <BalanceCard {...overview} />
+            {summary ? (
+              <BalanceCard
+                netWorth={summary.netWorth}
+                available={summary.available}
+                investments={summary.invested}
+                debts={summary.cardDebt}
+                breakdown={{ banks: summary.banks, wallets: summary.wallets, cash: summary.cash }}
+              />
+            ) : null}
           </Animated.View>
 
           <Animated.View entering={enter(2)}>
@@ -143,7 +149,7 @@ export function LiveHome() {
                 <EmptyState
                   icon="plus.circle"
                   title="Aún no hay movimientos"
-                  message="Registra un ingreso, un gasto o una transferencia con el botón «+»."
+                  message="Registra un ingreso, un gasto, una transferencia o un ajuste con el botón «+»."
                   actionLabel="Registrar movimiento"
                   onAction={() => router.push('/transaction/new')}
                 />
@@ -160,7 +166,7 @@ export function LiveHome() {
           <FinancialCard tone="muted" padding={spacing.lg}>
             <AppText variant="subhead">Próximamente con tus datos</AppText>
             <AppText variant="footnote" color="textSecondary" style={{ marginTop: spacing.xs }}>
-              Análisis de ingresos y gastos, presupuestos y el asesor se activan con tus datos reales en las próximas fases.
+              Estadísticas, presupuestos, metas y el asesor se activan con tus datos reales en las próximas fases.
             </AppText>
             <AppText variant="subhead" color="primary" style={{ marginTop: spacing.md }} onPress={() => setMode('demo')}>
               Ver la demostración

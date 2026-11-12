@@ -17,6 +17,12 @@
   `console.log` de datos. Al usuario, siempre el mensaje en español de `authErrors`/`errors`.
 - Auditoría: `audit_logs` la escriben triggers. Una tabla financiera nueva lleva su trigger
   `audit_row_change` y nunca guarda montos ni textos en la auditoría.
+- Cuentas y movimientos se escriben SOLO con las funciones RPC (`src/services/accounts`,
+  `src/services/transactions`); la tabla no acepta escrituras directas. Los saldos y el
+  resumen se leen del servidor (`account_balances`, `financial_summary`): no se suman en la app.
+- La regla de cómo afecta un movimiento a una cuenta vive en `public.transaction_effect`.
+  Cualquier cálculo nuevo de saldos usa esa función.
+- Selectores sin animación (preferencia del usuario): `OptionSheet` y `SegmentedControl` son instantáneos.
 - Dinero: PESOS ENTEROS en la app y BIGINT en la base. Formato y lectura solo con
   `src/lib/money.ts`. Transferencias, ajustes y pagos de tarjeta no son ingreso ni gasto.
 - Diseño: colores, tipografía, espacios y sombras solo desde `src/theme` (`useAppTheme()`);

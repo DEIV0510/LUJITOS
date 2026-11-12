@@ -17,6 +17,8 @@ export type AccountTypeDb =
   | 'checking'
   | 'credit_card'
   | 'investment'
+  | 'cdt'
+  | 'investment_fund'
   | 'other';
 export type ConnectionTypeDb = 'manual' | 'import' | 'open_finance';
 export type CategoryTypeDb = 'income' | 'expense';
@@ -52,6 +54,13 @@ export type AccountRow = Timestamps & {
   credit_limit: number | null;
   is_active: boolean;
   archived_at: string | null;
+  /** Nombre de la entidad cuando no está en la lista (institution = custom). */
+  institution_name: string | null;
+  description: string | null;
+  /** Solo tarjetas: día de corte y día límite de pago (1–31). */
+  statement_day: number | null;
+  payment_due_day: number | null;
+  client_request_id: string | null;
 };
 
 export type CategoryRow = {
@@ -64,6 +73,7 @@ export type CategoryRow = {
   is_default: boolean;
   slug: string | null;
   created_at: string;
+  archived_at: string | null;
 };
 
 export type TransactionRow = Timestamps & {
@@ -80,7 +90,10 @@ export type TransactionRow = Timestamps & {
   notes: string | null;
   transaction_date: string;
   source: TransactionSourceDb;
+  /** Anulación: deja de contar en los saldos, pero se conserva. */
   deleted_at: string | null;
+  void_reason: string | null;
+  client_request_id: string | null;
 };
 
 export type AccountSnapshotRow = {
@@ -108,6 +121,12 @@ export type AccountBalanceRow = {
   balance: number;
   transaction_count: number;
   last_transaction_date: string | null;
+  total_income: number;
+  total_expense: number;
+  transfers_in: number;
+  transfers_out: number;
+  adjustments_net: number;
+  last_activity_at: string | null;
 };
 
 /** Auditoría: solo lectura desde la app. Sin montos, textos, contraseñas ni tokens. */
@@ -134,54 +153,24 @@ export type Database = {
         Update: Partial<ProfileRow>;
         Relationships: [];
       };
+      // Escrituras solo por RPC (create_account, update_account, archive_account…).
       accounts: {
         Row: AccountRow;
-        Insert: Optional<
-          AccountRow,
-          | 'id'
-          | 'user_id'
-          | 'institution'
-          | 'initial_balance'
-          | 'currency'
-          | 'last_four_digits'
-          | 'color'
-          | 'icon'
-          | 'connection_type'
-          | 'credit_limit'
-          | 'is_active'
-          | 'archived_at'
-          | 'created_at'
-          | 'updated_at'
-        >;
-        Update: Partial<AccountRow>;
+        Insert: never;
+        Update: never;
         Relationships: [];
       };
       categories: {
         Row: CategoryRow;
-        Insert: Optional<CategoryRow, 'id' | 'user_id' | 'icon' | 'color' | 'is_default' | 'slug' | 'created_at'>;
+        Insert: Optional<CategoryRow, 'id' | 'user_id' | 'icon' | 'color' | 'is_default' | 'slug' | 'created_at' | 'archived_at'>;
         Update: Partial<CategoryRow>;
         Relationships: [];
       };
+      // Escrituras solo por RPC (create_transaction, update_transaction, void_transaction…).
       transactions: {
         Row: TransactionRow;
-        Insert: Optional<
-          TransactionRow,
-          | 'id'
-          | 'user_id'
-          | 'account_id'
-          | 'destination_account_id'
-          | 'category_id'
-          | 'adjustment_sign'
-          | 'description'
-          | 'merchant'
-          | 'notes'
-          | 'transaction_date'
-          | 'source'
-          | 'deleted_at'
-          | 'created_at'
-          | 'updated_at'
-        >;
-        Update: Partial<TransactionRow>;
+        Insert: never;
+        Update: never;
         Relationships: [];
       };
       account_snapshots: {
@@ -207,7 +196,108 @@ export type Database = {
     Views: {
       account_balances: { Row: AccountBalanceRow; Relationships: [] };
     };
-    Functions: { [_ in never]: never };
+    // Funciones RPC del motor financiero (supabase/migrations/20261112090100_finance_engine.sql).
+    Functions: {
+      create_account: {
+        Args: {
+          p_name: string;
+          p_account_type: AccountTypeDb;
+          p_institution?: string;
+          p_institution_name?: string | null;
+          p_initial_balance?: number;
+          p_credit_limit?: number | null;
+          p_last_four_digits?: string | null;
+          p_color?: string | null;
+          p_icon?: string | null;
+          p_description?: string | null;
+          p_statement_day?: number | null;
+          p_payment_due_day?: number | null;
+          p_request_id?: string | null;
+        };
+        Returns: string;
+      };
+      update_account: {
+        Args: {
+          p_account_id: string;
+          p_name: string;
+          p_account_type: AccountTypeDb;
+          p_institution: string;
+          p_institution_name: string | null;
+          p_initial_balance: number;
+          p_credit_limit: number | null;
+          p_last_four_digits: string | null;
+          p_color: string | null;
+          p_icon: string | null;
+          p_description: string | null;
+          p_statement_day: number | null;
+          p_payment_due_day: number | null;
+        };
+        Returns: string;
+      };
+      archive_account: { Args: { p_account_id: string; p_force?: boolean }; Returns: undefined };
+      restore_account: { Args: { p_account_id: string }; Returns: undefined };
+      create_transaction: {
+        Args: {
+          p_type: TransactionTypeDb;
+          p_amount: number;
+          p_account_id: string;
+          p_destination_account_id?: string | null;
+          p_category_id?: string | null;
+          p_transaction_date?: string | null;
+          p_description?: string;
+          p_merchant?: string | null;
+          p_notes?: string | null;
+          p_request_id?: string | null;
+          p_allow_negative?: boolean;
+          p_allow_duplicate?: boolean;
+        };
+        Returns: string;
+      };
+      update_transaction: {
+        Args: {
+          p_transaction_id: string;
+          p_amount: number;
+          p_account_id: string;
+          p_destination_account_id?: string | null;
+          p_category_id?: string | null;
+          p_transaction_date?: string | null;
+          p_description?: string;
+          p_merchant?: string | null;
+          p_notes?: string | null;
+          p_allow_negative?: boolean;
+          p_allow_duplicate?: boolean;
+        };
+        Returns: string;
+      };
+      void_transaction: { Args: { p_transaction_id: string; p_reason?: string | null }; Returns: undefined };
+      reconcile_account: {
+        Args: {
+          p_account_id: string;
+          p_observed_balance: number;
+          p_reason: string;
+          p_expected_balance?: number | null;
+          p_request_id?: string | null;
+        };
+        Returns: Json;
+      };
+      delete_category: { Args: { p_category_id: string; p_reassign_to?: string | null }; Returns: undefined };
+      financial_summary: { Args: { p_month?: string | null }; Returns: Json };
+      account_balance_history: {
+        Args: { p_account_id: string; p_from: string; p_to: string };
+        Returns: { day: string; balance: number }[];
+      };
+      transaction_effect: {
+        Args: {
+          p_type: TransactionTypeDb;
+          p_amount: number;
+          p_adjustment_sign: number | null;
+          p_account_id: string | null;
+          p_destination_account_id: string | null;
+          p_target: string;
+        };
+        Returns: number;
+      };
+    };
     Enums: {
       account_type: AccountTypeDb;
       connection_type: ConnectionTypeDb;

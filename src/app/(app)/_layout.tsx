@@ -14,7 +14,10 @@ export default function PrivateLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="transaction/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="transaction/edit" options={{ presentation: 'modal' }} />
         <Stack.Screen name="account/new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="account/edit" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="category/edit" options={{ presentation: 'modal' }} />
       </Stack>
     </FinanceDataProvider>
   );

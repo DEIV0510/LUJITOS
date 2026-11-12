@@ -77,6 +77,20 @@ export default function SettingsScreen() {
       </View>
 
       <View>
+        <SectionHeader title="Finanzas" />
+        <FinancialCard padding={spacing.lg} style={styles.list}>
+          <ListRow
+            title="Categorías"
+            subtitle="Crea, edita y archiva tus categorías de ingresos y gastos"
+            icon="square.grid.2x2.fill"
+            tone="sage"
+            onPress={() => router.push('/categories')}
+          />
+          <ListRow title="Tarjetas de crédito" subtitle="Cupo, deuda, corte y pago" icon="creditcard.fill" tone="gold" showDivider onPress={() => router.push('/cards')} />
+        </FinancialCard>
+      </View>
+
+      <View>
         <SectionHeader title="Privacidad" />
         <FinancialCard padding={spacing.lg} style={styles.list}>
           <ListRow
